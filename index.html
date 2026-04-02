@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lore Wiki</title>
+<style>
+  /* ---- RESET & BASE ---- */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f0e8;
+    --bg2: #ebe6d8;
+    --bg3: #ddd8c8;
+    --border: #999;
+    --border2: #bbb;
+    --text: #111;
+    --text2: #444;
+    --text3: #777;
+    --link: #00008b;
+    --link-visited: #551a8b;
+    --accent: #8b0000;
+    --table-head: #ccc8b8;
+    --infobox-bg: #e8e4d8;
+    --timeline-line: #555;
+    --timeline-node: #333;
+    --timeline-alt: #8b0000;
+    --input-bg: #fff;
+    --input-border: #888;
+    --btn-bg: #ddd;
+    --btn-border: #888;
+    --btn-hover: #ccc;
+    --sidebar-w: 220px;
+    --header-h: 40px;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 15px;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  a { color: var(--link); }
+  a:visited { color: var(--link-visited); }
+  a:hover { text-decoration: underline; }
+
+  button, input, select, textarea {
+    font-family: inherit;
+    font-size: 14px;
+  }
+
+  button {
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    padding: 3px 10px;
+    cursor: pointer;
+  }
+  button:hover { background: var(--btn-hover); }
+
+  input[type=text], input[type=password], select, textarea {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    padding: 3px 6px;
+  }
+
+  textarea { resize: vertical; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+
+  /* ---- LAYOUT ---- */
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  #topbar {
+    height: var(--header-h);
+    background: var(--bg3);
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  #topbar h1 {
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+  #topbar nav { display: flex; gap: 4px; }
+  #topbar nav button {
+    font-size: 13px;
+    padding: 2px 8px;
+    border: 1px solid transparent;
+  }
+  #topbar nav button.active {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-weight: bold;
+  }
+  #topbar .spacer { flex: 1; }
+  #search-box { width: 180px; }
+  #edit-lock-btn { font-size: 12px; }
+
+  #main-area {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  #sidebar {
+    width: var(--sidebar-w);
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding: 8px 0;
+  }
+
+  #sidebar h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    padding: 4px 10px 2px;
+    margin-top: 6px;
+  }
+
+  #sidebar ul { list-style: none; }
+  #sidebar ul li a {
+    display: block;
+    padding: 2px 16px;
+    text-decoration: none;
+    color: var(--link);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #sidebar ul li a:hover { background: var(--bg3); }
+  #sidebar ul li a.current { font-weight: bold; background: var(--bg3); }
+
+  #sidebar .sidebar-add {
+    padding: 4px 10px;
+  }
+  #sidebar .sidebar-add button { font-size: 12px; width: 100%; }
+
+  #content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 30px;
+  }
+
+  /* ---- VIEWS ---- */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---- WIKI PAGE VIEW ---- */
+  #wiki-view .page-header {
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  #wiki-view .page-header h2 {
+    font-size: 22px;
+    flex: 1;
+  }
+  #wiki-view .page-header .page-type {
+    font-size: 12px;
+    color: var(--text3);
+    border: 1px solid var(--border2);
+    padding: 1px 6px;
+  }
+  #wiki-view .page-actions { display: flex; gap: 6px; }
+
+  .wiki-content { max-width: 800px; line-height: 1.6; }
+  .wiki-content h2 { font-size: 19px; border-bottom: 1px solid var(--border2); margin: 18px 0 8px; padding-bottom: 3px; }
+  .wiki-content h3 { font-size: 16px; margin: 14px 0 6px; }
+  .wiki-content h4 { font-size: 14px; margin: 10px 0 4px; }
+  .wiki-content p { margin: 6px 0; }
+  .wiki-content ul, .wiki-content ol { margin: 6px 0 6px 24px; }
+  .wiki-content blockquote {
+    border-left: 3px solid var(--border);
+    padding: 4px 12px;
+    color: var(--text2);
+    margin: 8px 0;
+    background: var(--bg2);
+  }
+  .wiki-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+    font-size: 14px;
+  }
+  .wiki-content table th {
+    background: var(--table-head);
+    border: 1px solid var(--border);
+    padding: 5px 8px;
+    text-align: left;
+  }
+  .wiki-content table td {
+    border: 1px solid var(--border2);
+    padding: 4px 8px;
+  }
+  .wiki-content img {
+    max-width: 100%;
+    border: 1px solid var(--border);
+    margin: 8px 0;
+    display: block;
+  }
+  .wiki-content .img-caption {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: -4px;
+    margin-bottom: 8px;
+  }
+
+  /* Infobox */
+  .infobox {
+    float: right;
+    margin: 0 0 14px 18px;
+    background: var(--infobox-bg);
+    border: 1px solid var(--border);
+    width: 260px;
+    font-size: 13px;
+  }
+  .infobox .infobox-title {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 8px;
+    font-weight: bold;
+    text-align: center;
+  }
+  .infobox table { margin: 0; font-size: 13px; }
+  .infobox table td { border: none; border-bottom: 1px solid var(--border2); padding: 3px 7px; }
+  .infobox table td:first-child { font-weight: bold; color: var(--text2); width: 40%; }
+  .clearfix::after { content: ''; display: table; clear: both; }
+
+  /* Internal wikilinks */
+  .wiki-link { color: var(--link); cursor: pointer; text-decoration: underline; }
+  .wiki-link.broken { color: var(--accent); }
+
+  /* ---- EDITOR ---- */
+  #editor-view { max-width: 900px; }
+  #editor-view h2 { font-size: 19px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .form-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+  .form-row label { width: 120px; font-size: 13px; flex-shrink: 0; }
+  .form-row input[type=text], .form-row select { flex: 1; }
+  .editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    padding: 5px 7px;
+  }
+  .editor-toolbar button {
+    font-size: 12px;
+    padding: 2px 7px;
+    font-family: monospace;
+  }
+  #editor-textarea {
+    width: 100%;
+    min-height: 400px;
+    font-family: monospace;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    padding: 8px;
+  }
+  .editor-actions { margin-top: 10px; display: flex; gap: 8px; }
+
+  /* Infobox editor */
+  #infobox-editor { margin-bottom: 10px; }
+  #infobox-editor h4 { font-size: 13px; margin-bottom: 5px; }
+  .infobox-row { display: flex; gap: 6px; margin-bottom: 4px; align-items: center; }
+  .infobox-row input { flex: 1; }
+  .infobox-row button { padding: 2px 6px; }
+
+  /* ---- TIMELINE VIEW ---- */
+  #timeline-view h2 { font-size: 19px; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 6px; display:flex; align-items:center; gap:10px; }
+  #timeline-view h2 span { flex:1; }
+
+  #timeline-canvas-wrap {
+    overflow: auto;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    position: relative;
+    min-height: 400px;
+  }
+
+  #timeline-svg {
+    display: block;
+  }
+
+  .tl-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .tl-legend {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .tl-legend-item { display: flex; align-items: center; gap: 4px; }
+  .tl-legend-swatch { width: 16px; height: 10px; border: 1px solid #555; }
+
+  /* ---- SEARCH RESULTS ---- */
+  #search-view h2 { font-size: 18px; margin-bottom: 12px; }
+  .search-result {
+    border: 1px solid var(--border2);
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: var(--bg2);
+    cursor: pointer;
+  }
+  .search-result:hover { background: var(--bg3); }
+  .search-result h4 { font-size: 15px; margin-bottom: 3px; }
+  .search-result p { font-size: 13px; color: var(--text2); }
+
+  /* ---- MODAL ---- */
+  #modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #modal-overlay.open { display: flex; }
+  #modal-box {
+    background: var(--bg);
+    border: 2px solid var(--border);
+    padding: 20px 24px;
+    min-width: 320px;
+    max-width: 500px;
+    width: 100%;
+  }
+  #modal-box h3 { font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid var(--border2); padding-bottom: 6px; }
+  .modal-actions { margin-top: 14px; display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ---- TL EVENT POPUP ---- */
+  #tl-popup {
+    display: none;
+    position: absolute;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    font-size: 13px;
+    max-width: 220px;
+    z-index: 50;
+    pointer-events: none;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+  }
+  #tl-popup h4 { font-size: 14px; margin-bottom: 4px; }
+  #tl-popup p { color: var(--text2); }
+
+  /* ---- SETTINGS PAGE ---- */
+  #settings-view h2 { font-size: 19px; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .settings-section { margin-bottom: 20px; }
+  .settings-section h3 { font-size: 15px; margin-bottom: 8px; }
+  .settings-row { margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
+  .settings-row label { width: 160px; font-size: 13px; }
+
+  /* ---- HOME VIEW ---- */
+  #home-view h2 { font-size: 22px; margin-bottom: 8px; }
+  #home-view .stats { display: flex; gap: 20px; margin: 14px 0; flex-wrap: wrap; }
+  .stat-box {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 10px 16px;
+    min-width: 100px;
+    text-align: center;
+  }
+  .stat-box .n { font-size: 26px; font-weight: bold; }
+  .stat-box .label { font-size: 12px; color: var(--text3); }
+  #home-view .recent h3 { font-size: 15px; margin: 14px 0 6px; border-bottom: 1px solid var(--border2); padding-bottom: 3px; }
+  #home-view .recent ul { list-style: disc; padding-left: 20px; }
+  #home-view .recent ul li a { color: var(--link); cursor: pointer; }
+
+  /* Timeline colors per branch */
+  .branch-main { stroke: #333; }
+  .branch-alt1 { stroke: #8b0000; }
+  .branch-alt2 { stroke: #003380; }
+  .branch-alt3 { stroke: #2d6a00; }
+  .branch-alt4 { stroke: #6b006b; }
+
+  /* Tag pills */
+  .tag {
+    display: inline-block;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    font-size: 11px;
+    padding: 1px 6px;
+    margin: 2px;
+    cursor: pointer;
+  }
+  .tag:hover { background: var(--bg); }
+
+  /* Back link */
+  .back-link { font-size: 13px; margin-bottom: 10px; display: inline-block; }
+
+  /* No-page placeholder */
+  .no-page { color: var(--text3); font-style: italic; margin-top: 20px; }
+
+  /* Notification bar */
+  #notif {
+    display: none;
+    position: fixed;
+    bottom: 12px;
+    right: 14px;
+    background: #333;
+    color: #fff;
+    padding: 8px 14px;
+    font-size: 13px;
+    border: 1px solid #555;
+    z-index: 200;
+  }
+
+  @media (max-width: 640px) {
+    #sidebar { display: none; }
+    #content-area { padding: 12px; }
+    .infobox { float: none; width: 100%; margin: 0 0 12px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <h1 id="home-link">📜 Lore Wiki</h1>
+    <nav>
+      <button id="nav-home" class="active" onclick="showView('home')">Home</button>
+      <button id="nav-timeline" onclick="showView('timeline')">Timeline</button>
+      <button id="nav-wiki" onclick="showWikiIndex()">Wiki</button>
+      <button id="nav-settings" onclick="showView('settings')">Settings</button>
+    </nav>
+    <div class="spacer"></div>
+    <input type="text" id="search-box" placeholder="Search…" onkeydown="if(event.key==='Enter')doSearch(this.value)">
+    <button onclick="doSearch(document.getElementById('search-box').value)">Go</button>
+    <button id="edit-lock-btn" onclick="promptEditCode()">🔒 Locked</button>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div id="main-area">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+      <h3>Categories</h3>
+      <ul id="sidebar-cats"></ul>
+      <hr style="margin:6px 10px;">
+      <h3>Recent Pages</h3>
+      <ul id="sidebar-recent"></ul>
+      <hr style="margin:6px 10px;">
+      <div class="sidebar-add">
+        <button onclick="newPage()">+ New Page</button>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div id="content-area">
+
+      <!-- HOME -->
+      <div id="home-view" class="view active">
+        <h2 id="wiki-title-display">My Lore Wiki</h2>
+        <p id="wiki-desc-display" style="color:var(--text2);margin-bottom:8px;"></p>
+        <div class="stats">
+          <div class="stat-box"><div class="n" id="stat-pages">0</div><div class="label">Pages</div></div>
+          <div class="stat-box"><div class="n" id="stat-events">0</div><div class="label">Timeline Events</div></div>
+          <div class="stat-box"><div class="n" id="stat-branches">0</div><div class="label">Alt Timelines</div></div>
+        </div>
+        <div class="recent">
+          <h3>Recent Pages</h3>
+          <ul id="home-recent-list"></ul>
+        </div>
+        <div class="recent">
+          <h3>All Categories</h3>
+          <ul id="home-cat-list"></ul>
+        </div>
+      </div>
+
+      <!-- WIKI INDEX / PAGE VIEW -->
+      <div id="wiki-view" class="view">
+        <div id="wiki-inner"></div>
+      </div>
+
+      <!-- TIMELINE -->
+      <div id="timeline-view" class="view">
+        <h2><span>Timeline</span>
+          <button onclick="showAddEventModal()">+ Add Event</button>
+          <button onclick="showAddBranchModal()">⑂ New Branch</button>
+        </h2>
+        <div class="tl-legend" id="tl-legend"></div>
+        <div class="tl-controls">
+          <label style="font-size:13px;">Filter branch:
+            <select id="tl-branch-filter" onchange="renderTimeline()">
+              <option value="all">All</option>
+            </select>
+          </label>
+          <button onclick="zoomTimeline(1.2)">Zoom +</button>
+          <button onclick="zoomTimeline(0.8)">Zoom −</button>
+          <button onclick="zoomTimeline(1)">Reset</button>
+        </div>
+        <div id="timeline-canvas-wrap">
+          <svg id="timeline-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div id="tl-popup"></div>
+      </div>
+
+      <!-- EDITOR -->
+      <div id="editor-view" class="view">
+        <h2 id="editor-title-label">Edit Page</h2>
+        <div class="form-row">
+          <label>Page Title</label>
+          <input type="text" id="ed-title" placeholder="e.g. The Elven Empire">
+        </div>
+        <div class="form-row">
+          <label>Category</label>
+          <select id="ed-category">
+            <option value="General">General</option>
+            <option value="Species">Species</option>
+            <option value="Factions">Factions</option>
+            <option value="Characters">Characters</option>
+            <option value="Locations">Locations</option>
+            <option value="History">History</option>
+            <option value="Magic &amp; Technology">Magic &amp; Technology</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="text" id="ed-category-custom" placeholder="Or type custom…" style="width:140px;">
+        </div>
+        <div class="form-row">
+          <label>Tags</label>
+          <input type="text" id="ed-tags" placeholder="comma-separated tags">
+        </div>
+
+        <!-- Infobox editor -->
+        <div id="infobox-editor">
+          <h4>Infobox (optional)</h4>
+          <div class="form-row">
+            <label>Infobox Title</label>
+            <input type="text" id="ib-title" placeholder="e.g. Species Overview">
+          </div>
+          <div id="ib-rows"></div>
+          <button onclick="addIBRow()">+ Add Row</button>
+        </div>
+
+        <div style="margin-bottom:6px;font-size:13px;color:var(--text2);">
+          Content (supports basic markup — see toolbar):
+        </div>
+        <div class="editor-toolbar">
+          <button onclick="insertMd('## ','')">H2</button>
+          <button onclick="insertMd('### ','')">H3</button>
+          <button onclick="insertMd('**','**')"><b>B</b></button>
+          <button onclick="insertMd('*','*')"><i>I</i></button>
+          <button onclick="insertMd('[[',']]')">[[Link]]</button>
+          <button onclick="insertMd('\n> ','')">Quote</button>
+          <button onclick="insertMd('\n- ','')">List</button>
+          <button onclick="insertTableTemplate()">Table</button>
+          <button onclick="insertMd('\n---\n','')">HR</button>
+          <button onclick="insertImageMd()">Image</button>
+          <button onclick="document.getElementById('img-upload-hidden').click()">Upload Img</button>
+        </div>
+        <textarea id="editor-textarea" spellcheck="true"></textarea>
+        <input type="file" id="img-upload-hidden" accept="image/*" style="display:none;" onchange="handleImgUpload(event)">
+
+        <div style="font-size:12px;color:var(--text3);margin-top:4px;">
+          Use [[Page Name]] for internal links. Use ![alt](url) for images or uploaded images.
+        </div>
+
+        <div class="editor-actions">
+          <button onclick="savePage()">Save Page</button>
+          <button onclick="previewPage()">Preview</button>
+          <button onclick="cancelEdit()">Cancel</button>
+          <button onclick="deletePage()" style="color:var(--accent);margin-left:auto;">Delete Page</button>
+        </div>
+      </div>
+
+      <!-- SEARCH -->
+      <div id="search-view" class="view">
+        <h2>Search Results: "<span id="search-query-label"></span>"</h2>
+        <div id="search-results"></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="settings-view" class="view">
+        <h2>Settings</h2>
+        <div class="settings-section">
+          <h3>Wiki Info</h3>
+          <div class="settings-row">
+            <label>Wiki Name</label>
+            <input type="text" id="s-wiki-name" style="flex:1;" value="My Lore Wiki">
+          </div>
+          <div class="settings-row">
+            <label>Description</label>
+            <input type="text" id="s-wiki-desc" style="flex:1;" placeholder="A short description of your world">
+          </div>
+          <button onclick="saveSettings()">Save Info</button>
+        </div>
+        <hr>
+        <div class="settings-section">
+          <h3>Edit Code</h3>
+          <p style="font-size:13px;margin-bottom:8px;">Set a passphrase so only people with the code can edit pages. Leave blank to allow anyone to edit.</p>
+          <div class="settings-row">
+            <label>Current Code</label>
+            <input type="password" id="s-edit-code" style="width:200px;" placeholder="(none set)">
+          </div>
+          <div class="settings-row">
+            <label>New Code</label>
+            <input type="password" id="s-new-code" style="width:200px;" placeholder="Enter new code">
+          </div>
+          <div class="settings-row">
+            <label>Confirm New Code</label>
+            <input type="password" id="s-confirm-code" style="width:200px;" placeholder="Confirm new code">
+          </div>
+          <button onclick="changeEditCode()">Update Edit Code</button>
+          <p style="font-size:12px;color:var(--text3);margin-top:6px;">⚠ If you forget the code, data can only be reset. Keep it safe.</p>
+        </div>
+        <hr>
+        <div class="settings-section">
+          <h3>Data Export / Import</h3>
+          <p style="font-size:13px;margin-bottom:8px;">Export all wiki data as a JSON file (for backup or GitHub). Import to restore.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button onclick="exportData()">Export JSON</button>
+            <button onclick="document.getElementById('import-file').click()">Import JSON</button>
+            <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+            <button onclick="generateGitHubReadme()" style="color:var(--accent);">Generate GitHub README</button>
+          </div>
+        </div>
+        <hr>
+        <div class="settings-section">
+          <h3>GitHub Pages Setup</h3>
+          <p style="font-size:13px;line-height:1.6;">To host this wiki on GitHub Pages and let collaborators edit:</p>
+          <ol style="font-size:13px;margin-left:20px;line-height:1.8;">
+            <li>Create a new GitHub repository (e.g. <code>my-lore-wiki</code>)</li>
+            <li>Download this HTML file and name it <code>index.html</code></li>
+            <li>Export your data JSON and name it <code>wiki-data.json</code></li>
+            <li>Push both files to the repo's <code>main</code> branch</li>
+            <li>Go to <b>Settings → Pages</b> and set source to <b>main / root</b></li>
+            <li>Your wiki is now live at <code>https://username.github.io/my-lore-wiki/</code></li>
+            <li>To update: export JSON → commit <code>wiki-data.json</code> → push</li>
+            <li>Collaborators can edit locally with the edit code, then export and submit a PR</li>
+          </ol>
+          <p style="font-size:12px;color:var(--text3);margin-top:8px;">For real-time multi-user editing, consider adding a GitHub Actions workflow that auto-commits the JSON. Advanced users can hook the Export button to the GitHub API directly.</p>
+        </div>
+        <hr>
+        <div class="settings-section">
+          <h3>Danger Zone</h3>
+          <button onclick="resetAll()" style="color:var(--accent);">Reset All Data</button>
+        </div>
+      </div>
+
+    </div><!-- /content-area -->
+  </div><!-- /main-area -->
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <h3 id="modal-title">Modal</h3>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notif"></div>
+
+<script>
+/* ===================== DATA ===================== */
+let DB = {
+  meta: { name: "My Lore Wiki", desc: "", editCode: "" },
+  pages: [],          // { id, title, category, tags:[], infobox:{title,rows:[[k,v]]}, content, created, updated }
+  timeline: {
+    branches: [],     // { id, name, color, parentBranchId, branchFromEventId }
+    events: []        // { id, branchId, year, title, desc, linkedPageId }
+  },
+  images: {}          // id -> base64 data url
+};
+
+let editUnlocked = false;
+let currentPageId = null;
+let editingPageId = null;
+let tlZoom = 1;
+let tlDragActive = false;
+
+const BRANCH_COLORS = ["#333","#8b0000","#003380","#2d6a00","#6b006b","#7a5200","#006060","#3d0000"];
+
+/* ===================== STORAGE ===================== */
+function save() {
+  try { localStorage.setItem('lore_wiki_db', JSON.stringify(DB)); } catch(e){}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem('lore_wiki_db');
+    if (raw) { DB = JSON.parse(raw); migrate(); }
+  } catch(e) {}
+}
+function migrate() {
+  if (!DB.meta) DB.meta = { name: "My Lore Wiki", desc: "", editCode: "" };
+  if (!DB.pages) DB.pages = [];
+  if (!DB.timeline) DB.timeline = { branches: [], events: [] };
+  if (!DB.images) DB.images = {};
+  if (!DB.timeline.branches) DB.timeline.branches = [];
+  if (!DB.timeline.events) DB.timeline.events = [];
+  // Ensure main branch
+  if (!DB.timeline.branches.find(b => b.id === 'main')) {
+    DB.timeline.branches.unshift({ id: 'main', name: 'Main Timeline', color: BRANCH_COLORS[0], parentBranchId: null, branchFromEventId: null });
+  }
+}
+
+/* ===================== UTILS ===================== */
+function uid() { return Math.random().toString(36).slice(2,9) + Date.now().toString(36); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function notify(msg, dur=2200) {
+  const n = document.getElementById('notif');
+  n.textContent = msg; n.style.display = 'block';
+  clearTimeout(n._t); n._t = setTimeout(()=>n.style.display='none', dur);
+}
+
+/* ===================== VIEWS ===================== */
+const VIEWS = ['home','wiki','timeline','editor','search','settings'];
+function showView(name) {
+  VIEWS.forEach(v => {
+    const el = document.getElementById(v+'-view');
+    if (el) el.classList.toggle('active', v===name);
+  });
+  // nav highlight
+  ['home','timeline','settings'].forEach(v => {
+    const btn = document.getElementById('nav-'+v);
+    if(btn) btn.classList.toggle('active', v===name);
+  });
+  document.getElementById('nav-wiki').classList.toggle('active', name==='wiki');
+  if (name === 'home') refreshHome();
+  if (name === 'timeline') renderTimeline();
+  if (name === 'settings') loadSettings();
+}
+
+function showWikiIndex() {
+  if (DB.pages.length === 0) {
+    renderWikiInner('<p class="no-page">No pages yet. <a href="#" onclick="newPage();return false;">Create the first page!</a></p>');
+    showView('wiki');
+    return;
+  }
+  // Show category index
+  const cats = {};
+  DB.pages.forEach(p => {
+    const c = p.category||'General';
+    if (!cats[c]) cats[c] = [];
+    cats[c].push(p);
+  });
+  let html = '<h2 style="font-size:20px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">Wiki Index</h2>';
+  Object.keys(cats).sort().forEach(cat => {
+    html += `<h3 style="font-size:15px;margin:12px 0 5px;">${esc(cat)}</h3><ul style="list-style:disc;padding-left:22px;">`;
+    cats[cat].forEach(p => {
+      html += `<li><a href="#" class="wiki-link" onclick="openPage('${p.id}');return false;">${esc(p.title)}</a></li>`;
+    });
+    html += '</ul>';
+  });
+  renderWikiInner(html);
+  showView('wiki');
+}
+
+function renderWikiInner(html) {
+  document.getElementById('wiki-inner').innerHTML = html;
+}
+
+/* ===================== HOME ===================== */
+function refreshHome() {
+  document.getElementById('wiki-title-display').textContent = DB.meta.name || 'My Lore Wiki';
+  document.getElementById('wiki-desc-display').textContent = DB.meta.desc || '';
+  document.getElementById('stat-pages').textContent = DB.pages.length;
+  document.getElementById('stat-events').textContent = DB.timeline.events.length;
+  document.getElementById('stat-branches').textContent = Math.max(0, DB.timeline.branches.length - 1);
+
+  const recent = [...DB.pages].sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,8);
+  const rl = document.getElementById('home-recent-list');
+  rl.innerHTML = recent.length ? recent.map(p=>`<li><a href="#" onclick="openPage('${p.id}');return false;">${esc(p.title)}</a> <span style="color:var(--text3);font-size:12px;">${p.category||''}</span></li>`).join('') : '<li style="color:var(--text3);font-size:13px;">No pages yet.</li>';
+
+  const cats = [...new Set(DB.pages.map(p=>p.category||'General'))].sort();
+  const cl = document.getElementById('home-cat-list');
+  cl.innerHTML = cats.map(c=>`<li><a href="#" onclick="filterByCategory('${esc(c)}');return false;">${esc(c)}</a></li>`).join('');
+
+  refreshSidebar();
+}
+
+function filterByCategory(cat) {
+  const pages = DB.pages.filter(p=>(p.category||'General')===cat);
+  let html = `<h2 style="font-size:20px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:6px;">Category: ${esc(cat)}</h2><ul style="list-style:disc;padding-left:22px;">`;
+  pages.forEach(p => { html += `<li><a href="#" class="wiki-link" onclick="openPage('${p.id}');return false;">${esc(p.title)}</a></li>`; });
+  html += '</ul>';
+  if (!pages.length) html += '<p class="no-page">No pages in this category.</p>';
+  renderWikiInner(html);
+  showView('wiki');
+}
+
+function refreshSidebar() {
+  const cats = {};
+  DB.pages.forEach(p => { const c=p.category||'General'; if(!cats[c]) cats[c]=[]; cats[c].push(p); });
+  const sc = document.getElementById('sidebar-cats');
+  sc.innerHTML = Object.keys(cats).sort().map(cat =>
+    `<li><a href="#" onclick="filterByCategory('${esc(cat)}');return false;" style="font-weight:bold;">${esc(cat)} (${cats[cat].length})</a></li>`
+  ).join('');
+
+  const recent = [...DB.pages].sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,6);
+  const sr = document.getElementById('sidebar-recent');
+  sr.innerHTML = recent.map(p=>
+    `<li><a href="#" onclick="openPage('${p.id}');return false;" ${p.id===currentPageId?'class="current"':''}>${esc(p.title)}</a></li>`
+  ).join('');
+}
+
+/* ===================== WIKI PAGE VIEW ===================== */
+function openPage(id) {
+  const page = DB.pages.find(p=>p.id===id);
+  if (!page) { notify('Page not found.'); return; }
+  currentPageId = id;
+
+  let html = `<div class="page-header">
+    <h2>${esc(page.title)}</h2>
+    <span class="page-type">${esc(page.category||'General')}</span>
+    <div class="page-actions">`;
+  if (editUnlocked) {
+    html += `<button onclick="editPage('${id}')">Edit</button>`;
+  }
+  html += `</div></div>`;
+
+  // Tags
+  if (page.tags && page.tags.length) {
+    html += `<div style="margin-bottom:10px;">` + page.tags.map(t=>`<span class="tag" onclick="searchByTag('${esc(t)}')">${esc(t)}</span>`).join('') + `</div>`;
+  }
+
+  html += `<div class="wiki-content clearfix">`;
+
+  // Infobox
+  if (page.infobox && (page.infobox.title || (page.infobox.rows && page.infobox.rows.length))) {
+    html += `<div class="infobox">`;
+    if (page.infobox.title) html += `<div class="infobox-title">${esc(page.infobox.title)}</div>`;
+    if (page.infobox.rows && page.infobox.rows.length) {
+      html += `<table>`;
+      page.infobox.rows.forEach(([k,v])=>{
+        html += `<tr><td>${esc(k)}</td><td>${renderInlineContent(v)}</td></tr>`;
+      });
+      html += `</table>`;
+    }
+    html += `</div>`;
+  }
+
+  html += renderContent(page.content || '');
+  html += `</div>`;
+
+  // Linked events
+  const evts = DB.timeline.events.filter(e=>e.linkedPageId===id);
+  if (evts.length) {
+    html += `<hr><h3 style="font-size:15px;margin:10px 0 6px;">Timeline Events</h3><ul style="list-style:disc;padding-left:22px;font-size:13px;">`;
+    evts.forEach(e => {
+      const branch = DB.timeline.branches.find(b=>b.id===e.branchId);
+      html += `<li><a href="#" onclick="showView('timeline');return false;">${esc(e.year)}: ${esc(e.title)}</a> <span style="color:var(--text3);">[${branch?esc(branch.name):'?'}]</span></li>`;
+    });
+    html += `</ul>`;
+  }
+
+  // Back link
+  html = `<a href="#" class="back-link" onclick="showWikiIndex();return false;">← All Pages</a>` + html;
+
+  renderWikiInner(html);
+  showView('wiki');
+  refreshSidebar();
+}
+
+function renderContent(raw) {
+  if (!raw) return '';
+  // Parse line-by-line simple markdown
+  const lines = raw.split('\n');
+  let out = '';
+  let inList = false, inOL = false, inTable = false, tableRows = [];
+
+  function flushTable() {
+    if (!tableRows.length) return;
+    out += '<table>';
+    tableRows.forEach((row, i) => {
+      const cells = row.split('|').map(c=>c.trim()).filter((_,j,a)=> j>0 && j<a.length-1);
+      if (i===1 && cells.every(c=>/^-+$/.test(c))) return; // separator
+      const tag = (i===0)?'th':'td';
+      out += '<tr>' + cells.map(c=>`<${tag}>${renderInlineContent(c)}</${tag}>`).join('') + '</tr>';
+    });
+    out += '</table>';
+    tableRows = []; inTable = false;
+  }
+
+  lines.forEach(line => {
+    // Table
+    if (line.trim().startsWith('|')) {
+      if (!inTable) { if(inList){out+='</ul>';inList=false;} if(inOL){out+='</ol>';inOL=false;} inTable=true; }
+      tableRows.push(line.trim());
+      return;
+    } else if (inTable) { flushTable(); }
+
+    // Heading
+    if (/^#### /.test(line)) { if(inList){out+='</ul>';inList=false;} if(inOL){out+='</ol>';inOL=false;} out+=`<h4>${renderInlineContent(line.slice(5))}</h4>`; return; }
+    if (/^### /.test(line)) { if(inList){out+='</ul>';inList=false;} if(inOL){out+='</ol>';inOL=false;} out+=`<h3>${renderInlineContent(line.slice(4))}</h3>`; return; }
+    if (/^## /.test(line)) { if(inList){out+='</ul>';inList=false;} if(inOL){out+='</ol>';inOL=false;} out+=`<h2>${renderInlineContent(line.slice(3))}</h2>`; return; }
+    if (/^# /.test(line)) { if(inList){out+='</ul>';inList=false;} if(inOL){out+='</ol>';inOL=false;} out+=`<h2 style="font-size:22px;">${renderInlineContent(line.slice(2))}</h2>`; return; }
+    // HR
+    if (/^---+$/.test(line.trim())) { if(inList){out+='</ul>';inList=false;} if(inOL){out+='</ol>';inOL=false;} out+='<hr>'; return; }
+    // Blockquote
+    if (/^> /.test(line)) { if(inList){out+='</ul>';inList=false;} if(inOL){out+='</ol>';inOL=false;} out+=`<blockquote>${renderInlineContent(line.slice(2))}</blockquote>`; return; }
+    // Unordered list
+    if (/^[*\-] /.test(line)) {
+      if(inOL){out+='</ol>';inOL=false;}
+      if(!inList){out+='<ul>';inList=true;}
+      out+=`<li>${renderInlineContent(line.slice(2))}</li>`; return;
+    }
+    // Ordered list
+    if (/^\d+\. /.test(line)) {
+      if(inList){out+='</ul>';inList=false;}
+      if(!inOL){out+='<ol>';inOL=true;}
+      out+=`<li>${renderInlineContent(line.replace(/^\d+\. /,''))}</li>`; return;
+    }
+    // Close lists
+    if (inList) { out+='</ul>'; inList=false; }
+    if (inOL) { out+='</ol>'; inOL=false; }
+    // Empty line = paragraph break
+    if (line.trim() === '') { out+='<p></p>'; return; }
+    out+=`<p>${renderInlineContent(line)}</p>`;
+  });
+  if (inList) out+='</ul>';
+  if (inOL) out+='</ol>';
+  if (inTable) flushTable();
+  return out;
+}
+
+function renderInlineContent(text) {
+  if (!text) return '';
+  // Images
+  text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
+    let realSrc = src;
+    if (src.startsWith('img:')) { const img = DB.images[src.slice(4)]; if(img) realSrc=img; }
+    return `<img src="${esc(realSrc)}" alt="${esc(alt)}"><div class="img-caption">${esc(alt)}</div>`;
+  });
+  // Wiki links
+  text = text.replace(/\[\[([^\]]+)\]\]/g, (_, name) => {
+    const page = DB.pages.find(p=>p.title.toLowerCase()===name.toLowerCase());
+    if (page) return `<a href="#" class="wiki-link" onclick="openPage('${page.id}');return false;">${esc(name)}</a>`;
+    return `<a href="#" class="wiki-link broken" title="Page not found" onclick="newPageWithTitle('${esc(name)}');return false;">${esc(name)}</a>`;
+  });
+  // Bold
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Inline code
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // External links
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  return text;
+}
+
+function searchByTag(tag) {
+  const results = DB.pages.filter(p=>p.tags && p.tags.includes(tag));
+  renderSearchResults('tag:'+tag, results);
+  showView('search');
+}
+
+/* ===================== EDITOR ===================== */
+function requireEdit() {
+  if (!editUnlocked && DB.meta.editCode) { promptEditCode(); return false; }
+  return true;
+}
+
+function newPage() {
+  if (!requireEdit()) return;
+  editingPageId = null;
+  document.getElementById('editor-title-label').textContent = 'New Page';
+  document.getElementById('ed-title').value = '';
+  document.getElementById('ed-category').value = 'General';
+  document.getElementById('ed-category-custom').value = '';
+  document.getElementById('ed-tags').value = '';
+  document.getElementById('ib-title').value = '';
+  document.getElementById('ib-rows').innerHTML = '';
+  document.getElementById('editor-textarea').value = '';
+  showView('editor');
+}
+
+function newPageWithTitle(title) {
+  if (!requireEdit()) return;
+  newPage();
+  document.getElementById('ed-title').value = title;
+}
+
+function editPage(id) {
+  if (!requireEdit()) return;
+  const page = DB.pages.find(p=>p.id===id);
+  if (!page) return;
+  editingPageId = id;
+  document.getElementById('editor-title-label').textContent = 'Edit: ' + page.title;
+  document.getElementById('ed-title').value = page.title;
+
+  const stdCats = ['General','Species','Factions','Characters','Locations','History','Magic & Technology','Other'];
+  const catSel = document.getElementById('ed-category');
+  if (stdCats.includes(page.category)) { catSel.value = page.category; document.getElementById('ed-category-custom').value=''; }
+  else { catSel.value='Other'; document.getElementById('ed-category-custom').value=page.category||''; }
+
+  document.getElementById('ed-tags').value = (page.tags||[]).join(', ');
+  document.getElementById('ib-title').value = (page.infobox&&page.infobox.title)||'';
+
+  const ibRowsEl = document.getElementById('ib-rows');
+  ibRowsEl.innerHTML = '';
+  if (page.infobox && page.infobox.rows) {
+    page.infobox.rows.forEach(([k,v]) => addIBRow(k,v));
+  }
+  document.getElementById('editor-textarea').value = page.content||'';
+  showView('editor');
+}
+
+function addIBRow(k='', v='') {
+  const div = document.createElement('div');
+  div.className = 'infobox-row';
+  div.innerHTML = `<input type="text" placeholder="Field name" value="${esc(k)}" style="width:130px;">
+    <input type="text" placeholder="Value" value="${esc(v)}">
+    <button onclick="this.parentElement.remove()">✕</button>`;
+  document.getElementById('ib-rows').appendChild(div);
+}
+
+function savePage() {
+  if (!requireEdit()) return;
+  const title = document.getElementById('ed-title').value.trim();
+  if (!title) { notify('Please enter a title.'); return; }
+
+  const customCat = document.getElementById('ed-category-custom').value.trim();
+  const cat = customCat || document.getElementById('ed-category').value;
+
+  const tags = document.getElementById('ed-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const ibTitle = document.getElementById('ib-title').value.trim();
+  const ibRowEls = document.getElementById('ib-rows').querySelectorAll('.infobox-row');
+  const ibRows = [];
+  ibRowEls.forEach(row => {
+    const ins = row.querySelectorAll('input');
+    const k = ins[0].value.trim(), v = ins[1].value.trim();
+    if (k) ibRows.push([k,v]);
+  });
+
+  const content = document.getElementById('editor-textarea').value;
+
+  if (editingPageId) {
+    const page = DB.pages.find(p=>p.id===editingPageId);
+    if (page) {
+      page.title = title; page.category = cat; page.tags = tags;
+      page.infobox = { title: ibTitle, rows: ibRows };
+      page.content = content; page.updated = Date.now();
+    }
+    currentPageId = editingPageId;
+  } else {
+    const page = { id: uid(), title, category: cat, tags, infobox:{title:ibTitle,rows:ibRows}, content, created: Date.now(), updated: Date.now() };
+    DB.pages.push(page);
+    currentPageId = page.id;
+  }
+  save();
+  notify('Saved!');
+  openPage(currentPageId);
+}
+
+function previewPage() {
+  const title = document.getElementById('ed-title').value.trim() || 'Preview';
+  const content = document.getElementById('editor-textarea').value;
+  const ibTitle = document.getElementById('ib-title').value.trim();
+  const ibRowEls = document.getElementById('ib-rows').querySelectorAll('.infobox-row');
+  const ibRows = [];
+  ibRowEls.forEach(row => {
+    const ins = row.querySelectorAll('input');
+    const k=ins[0].value.trim(), v=ins[1].value.trim();
+    if(k) ibRows.push([k,v]);
+  });
+
+  let html = `<a href="#" class="back-link" onclick="showView('editor');return false;">← Back to Editor</a>
+    <div class="page-header"><h2>${esc(title)}</h2></div>
+    <div class="wiki-content clearfix">`;
+  if (ibTitle || ibRows.length) {
+    html += `<div class="infobox">`;
+    if (ibTitle) html += `<div class="infobox-title">${esc(ibTitle)}</div>`;
+    if (ibRows.length) { html += `<table>`; ibRows.forEach(([k,v])=>{ html+=`<tr><td>${esc(k)}</td><td>${renderInlineContent(v)}</td></tr>`; }); html+=`</table>`; }
+    html += `</div>`;
+  }
+  html += renderContent(content) + `</div>`;
+  renderWikiInner(html);
+  showView('wiki');
+}
+
+function cancelEdit() {
+  if (currentPageId) openPage(currentPageId);
+  else showWikiIndex();
+}
+
+function deletePage() {
+  if (!requireEdit()) return;
+  if (!editingPageId) return;
+  if (!confirm('Delete this page permanently?')) return;
+  DB.pages = DB.pages.filter(p=>p.id!==editingPageId);
+  // Remove linked events
+  DB.timeline.events.forEach(e=>{ if(e.linkedPageId===editingPageId) e.linkedPageId=null; });
+  save(); notify('Page deleted.');
+  currentPageId = null; editingPageId = null;
+  showWikiIndex();
+}
+
+/* ---- Toolbar helpers ---- */
+function insertMd(before, after) {
+  const ta = document.getElementById('editor-textarea');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s,e);
+  ta.value = ta.value.slice(0,s) + before + sel + after + ta.value.slice(e);
+  ta.selectionStart = s + before.length;
+  ta.selectionEnd = s + before.length + sel.length;
+  ta.focus();
+}
+
+function insertTableTemplate() {
+  insertMd('\n| Column 1 | Column 2 | Column 3 |\n|---|---|---|\n| Row 1 | Data | Data |\n| Row 2 | Data | Data |\n','');
+}
+
+function insertImageMd() {
+  const url = prompt('Image URL (or use Upload Img for local images):');
+  if (url) insertMd(`![Image description](${url})`, '');
+}
+
+function handleImgUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const id = uid();
+    DB.images[id] = e.target.result;
+    save();
+    insertMd(`![${file.name}](img:${id})`, '');
+    notify('Image uploaded.');
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+/* ===================== TIMELINE ===================== */
+const TL_NODE_R = 8;
+const TL_ROW_H = 70;
+const TL_LEFT_PAD = 80;
+const TL_RIGHT_PAD = 60;
+
+function getBranchColor(branchId) {
+  const b = DB.timeline.branches.find(b=>b.id===branchId);
+  return b ? b.color : '#555';
+}
+
+function getBranchRow(branchId, branches) {
+  const idx = branches.findIndex(b=>b.id===branchId);
+  return idx < 0 ? 0 : idx;
+}
+
+function renderTimeline() {
+  const svg = document.getElementById('timeline-svg');
+  const wrap = document.getElementById('timeline-canvas-wrap');
+  const filter = document.getElementById('tl-branch-filter').value;
+
+  // Update filter select
+  const filterSel = document.getElementById('tl-branch-filter');
+  const curFilter = filterSel.value;
+  filterSel.innerHTML = '<option value="all">All</option>' +
+    DB.timeline.branches.map(b=>`<option value="${b.id}" ${b.id===curFilter?'selected':''}>${esc(b.name)}</option>`).join('');
+
+  // Determine visible branches
+  let visibleBranches = DB.timeline.branches;
+  if (filter !== 'all') {
+    // Show main and selected branch
+    visibleBranches = DB.timeline.branches.filter(b=>b.id==='main'||b.id===filter);
+  }
+
+  // Get events
+  let events = DB.timeline.events.filter(e=>visibleBranches.find(b=>b.id===e.branchId));
+  events = [...events].sort((a,b)=> parseYear(a.year)-parseYear(b.year));
+
+  if (!events.length) {
+    svg.innerHTML = '<text x="20" y="30" font-family="serif" font-size="14" fill="#777">No events yet. Click "+ Add Event" to begin.</text>';
+    svg.setAttribute('width','600'); svg.setAttribute('height','80');
+    updateLegend(visibleBranches); return;
+  }
+
+  const years = events.map(e=>parseYear(e.year));
+  const minY = Math.min(...years), maxY = Math.max(...years);
+  const span = Math.max(maxY - minY, 1);
+
+  const W = Math.max(800, Math.round((span / 10 + 2) * 120 * tlZoom));
+  const H = (visibleBranches.length) * TL_ROW_H + TL_ROW_H;
+
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+
+  let svgContent = '';
+
+  // Grid lines
+  svgContent += `<g stroke="#ccc" stroke-width="1">`;
+  visibleBranches.forEach((b,i) => {
+    const y = TL_ROW_H/2 + i * TL_ROW_H;
+    svgContent += `<line x1="${TL_LEFT_PAD}" y1="${y}" x2="${W - TL_RIGHT_PAD}" y2="${y}"/>`;
+  });
+  svgContent += `</g>`;
+
+  // Branch labels
+  svgContent += `<g font-family="serif" font-size="12" fill="var(--text2)">`;
+  visibleBranches.forEach((b,i) => {
+    const y = TL_ROW_H/2 + i * TL_ROW_H;
+    svgContent += `<text x="4" y="${y+4}" fill="${b.color}">${esc(b.name)}</text>`;
+  });
+  svgContent += `</g>`;
+
+  // Map year to X
+  function xOf(year) {
+    const py = parseYear(year);
+    return TL_LEFT_PAD + Math.round(((py - minY) / span) * (W - TL_LEFT_PAD - TL_RIGHT_PAD));
+  }
+
+  // Draw branch fork connectors
+  DB.timeline.branches.forEach(b => {
+    if (!b.branchFromEventId) return;
+    const srcEvt = DB.timeline.events.find(e=>e.id===b.branchFromEventId);
+    if (!srcEvt) return;
+    if (!visibleBranches.find(vb=>vb.id===srcEvt.branchId) || !visibleBranches.find(vb=>vb.id===b.id)) return;
+    const srcRow = getBranchRow(srcEvt.branchId, visibleBranches);
+    const destRow = getBranchRow(b.id, visibleBranches);
+    const x = xOf(srcEvt.year);
+    const y1 = TL_ROW_H/2 + srcRow * TL_ROW_H;
+    const y2 = TL_ROW_H/2 + destRow * TL_ROW_H;
+    svgContent += `<path d="M${x},${y1} C${x+40},${y1} ${x+40},${y2} ${x},${y2}" stroke="${b.color}" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>`;
+  });
+
+  // Draw events
+  events.forEach(evt => {
+    const branch = visibleBranches.find(b=>b.id===evt.branchId);
+    if (!branch) return;
+    const row = getBranchRow(evt.branchId, visibleBranches);
+    const x = xOf(evt.year);
+    const y = TL_ROW_H/2 + row * TL_ROW_H;
+    const color = branch.color;
+    const hasLink = !!evt.linkedPageId && DB.pages.find(p=>p.id===evt.linkedPageId);
+
+    svgContent += `<g class="tl-evt" cursor="pointer" 
+      onmouseenter="showTLPopup(event,'${evt.id}')" 
+      onmouseleave="hideTLPopup()"
+      onclick="tleventClick('${evt.id}')">`;
+    svgContent += `<circle cx="${x}" cy="${y}" r="${TL_NODE_R}" fill="${color}" stroke="#fff" stroke-width="2"/>`;
+    if (hasLink) svgContent += `<circle cx="${x}" cy="${y}" r="${TL_NODE_R+3}" fill="none" stroke="${color}" stroke-width="1"/>`;
+    // Year label
+    svgContent += `<text x="${x}" y="${y - TL_NODE_R - 4}" text-anchor="middle" font-family="serif" font-size="10" fill="#555">${esc(evt.year)}</text>`;
+    // Title label (truncated)
+    const label = evt.title.length > 16 ? evt.title.slice(0,14)+'…' : evt.title;
+    svgContent += `<text x="${x}" y="${y + TL_NODE_R + 13}" text-anchor="middle" font-family="serif" font-size="11" fill="${color}">${esc(label)}</text>`;
+    svgContent += `</g>`;
+  });
+
+  // Year axis markers
+  svgContent += `<g font-family="monospace" font-size="10" fill="#888">`;
+  const axisY = H - 12;
+  const step = chooseStep(span);
+  for (let yr = Math.ceil(minY/step)*step; yr <= maxY; yr += step) {
+    const x = xOf(yr);
+    svgContent += `<line x1="${x}" y1="${H-20}" x2="${x}" y2="${H-22}" stroke="#aaa"/>`;
+    svgContent += `<text x="${x}" y="${axisY}" text-anchor="middle">${yr}</text>`;
+  }
+  svgContent += `</g>`;
+
+  svg.innerHTML = svgContent;
+  updateLegend(visibleBranches);
+}
+
+function chooseStep(span) {
+  if (span <= 20) return 2;
+  if (span <= 100) return 10;
+  if (span <= 500) return 50;
+  if (span <= 2000) return 100;
+  return 500;
+}
+
+function parseYear(y) {
+  const n = parseInt(String(y).replace(/[^-\d]/g,''));
+  return isNaN(n) ? 0 : n;
+}
+
+function updateLegend(branches) {
+  const leg = document.getElementById('tl-legend');
+  leg.innerHTML = branches.map(b=>
+    `<div class="tl-legend-item"><div class="tl-legend-swatch" style="background:${b.color};border-color:${b.color}"></div>${esc(b.name)}</div>`
+  ).join('');
+}
+
+function zoomTimeline(factor) {
+  if (factor === 1) tlZoom = 1;
+  else tlZoom = Math.max(0.2, Math.min(5, tlZoom * factor));
+  renderTimeline();
+}
+
+function showTLPopup(event, evtId) {
+  const e = DB.timeline.events.find(e=>e.id===evtId);
+  if (!e) return;
+  const branch = DB.timeline.branches.find(b=>b.id===e.branchId);
+  const popup = document.getElementById('tl-popup');
+  popup.innerHTML = `<h4>${esc(e.year)}: ${esc(e.title)}</h4>
+    <p style="margin-bottom:3px;">${esc(e.desc||'')}</p>
+    ${branch?`<p style="font-size:11px;color:var(--text3);">${esc(branch.name)}</p>`:''}
+    ${e.linkedPageId && DB.pages.find(p=>p.id===e.linkedPageId)?`<p style="font-size:11px;color:var(--link);">→ Linked wiki page</p>`:''}`;
+  const wrap = document.getElementById('timeline-canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  popup.style.left = (event.clientX - rect.left + 12) + 'px';
+  popup.style.top = (event.clientY - rect.top + 12) + 'px';
+  popup.style.display = 'block';
+}
+function hideTLPopup() { document.getElementById('tl-popup').style.display='none'; }
+
+function tleventClick(evtId) {
+  if (!requireEdit()) {
+    // If locked, just open linked page
+    const e = DB.timeline.events.find(e=>e.id===evtId);
+    if (e && e.linkedPageId) openPage(e.linkedPageId);
+    return;
+  }
+  showEditEventModal(evtId);
+}
+
+/* ---- Add Event Modal ---- */
+function showAddEventModal() {
+  if (!requireEdit()) return;
+  openModal('Add Timeline Event', `
+    <div class="form-row"><label>Year / Date</label><input type="text" id="m-year" placeholder="e.g. 432 AE" style="flex:1;"></div>
+    <div class="form-row"><label>Branch</label><select id="m-branch">${DB.timeline.branches.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}</select></div>
+    <div class="form-row"><label>Title</label><input type="text" id="m-title" placeholder="Event name" style="flex:1;"></div>
+    <div class="form-row" style="align-items:flex-start;"><label>Description</label><textarea id="m-desc" rows="3" style="flex:1;"></textarea></div>
+    <div class="form-row"><label>Link to Page</label><select id="m-page"><option value="">— none —</option>${DB.pages.map(p=>`<option value="${p.id}">${esc(p.title)}</option>`).join('')}</select></div>
+  `, [
+    { label:'Add', fn: () => {
+      const year = document.getElementById('m-year').value.trim();
+      const title = document.getElementById('m-title').value.trim();
+      if (!year||!title){notify('Year and title required.');return;}
+      DB.timeline.events.push({
+        id:uid(), branchId: document.getElementById('m-branch').value,
+        year, title, desc: document.getElementById('m-desc').value.trim(),
+        linkedPageId: document.getElementById('m-page').value || null
+      });
+      save(); closeModal(); renderTimeline(); notify('Event added.');
+    }},
+    { label:'Cancel', fn: closeModal }
+  ]);
+}
+
+function showEditEventModal(evtId) {
+  const e = DB.timeline.events.find(e=>e.id===evtId);
+  if (!e) return;
+  openModal('Edit Event', `
+    <div class="form-row"><label>Year / Date</label><input type="text" id="m-year" value="${esc(e.year)}" style="flex:1;"></div>
+    <div class="form-row"><label>Branch</label><select id="m-branch">${DB.timeline.branches.map(b=>`<option value="${b.id}" ${b.id===e.branchId?'selected':''}>${esc(b.name)}</option>`).join('')}</select></div>
+    <div class="form-row"><label>Title</label><input type="text" id="m-title" value="${esc(e.title)}" style="flex:1;"></div>
+    <div class="form-row" style="align-items:flex-start;"><label>Description</label><textarea id="m-desc" rows="3" style="flex:1;">${esc(e.desc||'')}</textarea></div>
+    <div class="form-row"><label>Link to Page</label><select id="m-page"><option value="">— none —</option>${DB.pages.map(p=>`<option value="${p.id}" ${p.id===e.linkedPageId?'selected':''}>${esc(p.title)}</option>`).join('')}</select></div>
+    <div style="margin-top:10px;"><button onclick="deleteEvent('${evtId}')" style="color:var(--accent);">Delete Event</button></div>
+  `, [
+    { label:'Save', fn: () => {
+      const year = document.getElementById('m-year').value.trim();
+      const title = document.getElementById('m-title').value.trim();
+      if (!year||!title){notify('Required.');return;}
+      e.year=year; e.branchId=document.getElementById('m-branch').value;
+      e.title=title; e.desc=document.getElementById('m-desc').value.trim();
+      e.linkedPageId=document.getElementById('m-page').value||null;
+      save(); closeModal(); renderTimeline(); notify('Event saved.');
+    }},
+    { label:'Cancel', fn: closeModal }
+  ]);
+}
+
+function deleteEvent(evtId) {
+  if (!confirm('Delete this event?')) return;
+  DB.timeline.events = DB.timeline.events.filter(e=>e.id!==evtId);
+  // Remove as branch origin
+  DB.timeline.branches.forEach(b=>{ if(b.branchFromEventId===evtId) b.branchFromEventId=null; });
+  save(); closeModal(); renderTimeline(); notify('Event deleted.');
+}
+
+/* ---- Add Branch Modal ---- */
+function showAddBranchModal() {
+  if (!requireEdit()) return;
+  openModal('New Alternate Timeline Branch', `
+    <div class="form-row"><label>Branch Name</label><input type="text" id="m-bname" placeholder="e.g. The Dark Empire Timeline" style="flex:1;"></div>
+    <div class="form-row"><label>Color</label>
+      <select id="m-bcolor">${BRANCH_COLORS.map(c=>`<option value="${c}" style="background:${c};color:#fff;">${c}</option>`).join('')}</select>
+      <input type="color" id="m-bcolor-pick" value="#8b0000" style="width:40px;height:28px;border:1px solid #888;cursor:pointer;">
+    </div>
+    <div class="form-row"><label>Branches from event</label>
+      <select id="m-bfrom"><option value="">— independent start —</option>${DB.timeline.events.map(e=>`<option value="${e.id}">${esc(e.year)}: ${esc(e.title)}</option>`).join('')}</select>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:4px;">Branching from an event shows a fork line on the timeline.</p>
+  `, [
+    { label:'Create', fn: () => {
+      const name = document.getElementById('m-bname').value.trim();
+      if (!name){notify('Name required.');return;}
+      const colorPick = document.getElementById('m-bcolor-pick').value;
+      const fromEvt = document.getElementById('m-bfrom').value;
+      DB.timeline.branches.push({
+        id: uid(), name, color: colorPick,
+        parentBranchId: fromEvt ? (DB.timeline.events.find(e=>e.id===fromEvt)||{}).branchId : null,
+        branchFromEventId: fromEvt || null
+      });
+      save(); closeModal(); renderTimeline(); notify('Branch created.');
+    }},
+    { label:'Cancel', fn: closeModal }
+  ]);
+}
+
+/* ===================== SEARCH ===================== */
+function doSearch(q) {
+  q = (q||'').trim();
+  if (!q) return;
+  document.getElementById('search-box').value = q;
+  const lq = q.toLowerCase();
+  const results = DB.pages.filter(p =>
+    p.title.toLowerCase().includes(lq) ||
+    (p.content||'').toLowerCase().includes(lq) ||
+    (p.tags||[]).some(t=>t.toLowerCase().includes(lq)) ||
+    (p.category||'').toLowerCase().includes(lq)
+  );
+  renderSearchResults(q, results);
+  showView('search');
+}
+
+function renderSearchResults(q, results) {
+  document.getElementById('search-query-label').textContent = q;
+  const container = document.getElementById('search-results');
+  if (!results.length) {
+    container.innerHTML = '<p style="color:var(--text3);">No pages found.</p>'; return;
+  }
+  container.innerHTML = results.map(p => {
+    const snippet = (p.content||'').slice(0,120).replace(/[#*\[\]]/g,'') + (p.content&&p.content.length>120?'…':'');
+    return `<div class="search-result" onclick="openPage('${p.id}')">
+      <h4>${esc(p.title)} <span style="font-size:12px;font-weight:normal;color:var(--text3);">[${esc(p.category||'General')}]</span></h4>
+      <p>${esc(snippet)}</p>
+    </div>`;
+  }).join('');
+}
+
+/* ===================== MODAL ===================== */
+function openModal(title, bodyHtml, buttons) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  const acts = document.getElementById('modal-actions');
+  acts.innerHTML = '';
+  (buttons||[]).forEach(b => {
+    const btn = document.createElement('button');
+    btn.textContent = b.label;
+    btn.onclick = b.fn;
+    acts.appendChild(btn);
+  });
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+document.getElementById('modal-overlay').addEventListener('click', e=>{ if(e.target===document.getElementById('modal-overlay')) closeModal(); });
+
+/* ===================== EDIT LOCK ===================== */
+function promptEditCode() {
+  if (editUnlocked) { editUnlocked=false; updateLockBtn(); notify('Editing locked.'); return; }
+  if (!DB.meta.editCode) { editUnlocked=true; updateLockBtn(); notify('Editing unlocked (no code set).'); return; }
+  openModal('Enter Edit Code', `
+    <p style="font-size:13px;margin-bottom:10px;">Enter the edit passphrase to unlock editing.</p>
+    <input type="password" id="unlock-code" placeholder="Passphrase" style="width:100%;" onkeydown="if(event.key==='Enter')submitUnlock()">
+  `, [
+    { label:'Unlock', fn: submitUnlock },
+    { label:'Cancel', fn: closeModal }
+  ]);
+  setTimeout(()=>document.getElementById('unlock-code')&&document.getElementById('unlock-code').focus(),100);
+}
+
+function submitUnlock() {
+  const val = document.getElementById('unlock-code').value;
+  if (val === DB.meta.editCode) {
+    editUnlocked = true; updateLockBtn(); closeModal(); notify('Editing unlocked!');
+  } else {
+    notify('Incorrect code.');
+  }
+}
+
+function updateLockBtn() {
+  const btn = document.getElementById('edit-lock-btn');
+  btn.textContent = editUnlocked ? '🔓 Editing' : '🔒 Locked';
+}
+
+/* ===================== SETTINGS ===================== */
+function loadSettings() {
+  document.getElementById('s-wiki-name').value = DB.meta.name||'My Lore Wiki';
+  document.getElementById('s-wiki-desc').value = DB.meta.desc||'';
+}
+
+function saveSettings() {
+  DB.meta.name = document.getElementById('s-wiki-name').value.trim() || 'My Lore Wiki';
+  DB.meta.desc = document.getElementById('s-wiki-desc').value.trim();
+  save(); notify('Settings saved.'); refreshHome();
+  document.getElementById('wiki-title-display').textContent = DB.meta.name;
+}
+
+function changeEditCode() {
+  const cur = document.getElementById('s-edit-code').value;
+  const neo = document.getElementById('s-new-code').value;
+  const con = document.getElementById('s-confirm-code').value;
+  if (DB.meta.editCode && cur !== DB.meta.editCode) { notify('Current code is wrong.'); return; }
+  if (neo !== con) { notify('New codes do not match.'); return; }
+  DB.meta.editCode = neo;
+  save(); notify('Edit code updated.');
+  document.getElementById('s-edit-code').value='';
+  document.getElementById('s-new-code').value='';
+  document.getElementById('s-confirm-code').value='';
+}
+
+/* ===================== EXPORT / IMPORT ===================== */
+function exportData() {
+  const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'wiki-data.json';
+  a.click();
+  notify('Exported wiki-data.json');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.pages) throw new Error('Invalid format');
+      if (!confirm('This will replace all current data. Continue?')) return;
+      DB = data; migrate(); save();
+      notify('Imported successfully.'); refreshHome();
+    } catch(err) { notify('Import failed: ' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value='';
+}
+
+function generateGitHubReadme() {
+  const name = DB.meta.name || 'Lore Wiki';
+  const desc = DB.meta.desc || '';
+  const md = `# ${name}\n\n${desc}\n\n## Stats\n- ${DB.pages.length} wiki pages\n- ${DB.timeline.events.length} timeline events\n- ${DB.timeline.branches.length-1} alternate timelines\n\n## How to Contribute\n1. Clone the repository\n2. Open \`index.html\` locally\n3. Enter the edit code to unlock editing\n4. Make your changes\n5. Export \`wiki-data.json\` and commit it\n6. Submit a Pull Request\n\n## Hosting\nThis wiki is hosted on GitHub Pages. Visit the live version at the repository's Pages URL.\n\n---\n*Generated by Lore Wiki*`;
+  const blob = new Blob([md], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'README.md'; a.click();
+  notify('README.md downloaded.');
+}
+
+function resetAll() {
+  if (!confirm('Reset ALL data? This cannot be undone.')) return;
+  if (!confirm('Are you absolutely sure?')) return;
+  localStorage.removeItem('lore_wiki_db');
+  location.reload();
+}
+
+/* ===================== INIT ===================== */
+function init() {
+  load();
+  // Ensure main branch
+  if (!DB.timeline.branches.find(b=>b.id==='main')) {
+    DB.timeline.branches.unshift({ id:'main', name:'Main Timeline', color:BRANCH_COLORS[0], parentBranchId:null, branchFromEventId:null });
+    save();
+  }
+
+  // Try to load wiki-data.json from same directory (for GitHub Pages use)
+  fetch('wiki-data.json')
+    .then(r=>{ if(!r.ok) throw new Error(); return r.json(); })
+    .then(data=>{
+      // Only auto-import if local storage is empty
+      if (!localStorage.getItem('lore_wiki_db')) {
+        DB = data; migrate(); save();
+      }
+    })
+    .catch(()=>{});
+
+  refreshHome();
+  updateLockBtn();
+
+  if (!DB.meta.editCode) { editUnlocked = true; updateLockBtn(); }
+
+  document.getElementById('home-link').onclick = () => showView('home');
+}
+
+init();
+</script>
+</body>
+</html>
