@@ -124,6 +124,29 @@ def build_toc(body_html):
             f'<ul>{"".join(out)}</ul></div>')
 
 
+def build_side_toc(body_html):
+    """The sticky 'Contents' column shown beside long articles."""
+    heads = re.findall(r'<h([23]) id="([^"]+)">(.*?)</h\1>', body_html)
+    if len(heads) < 3:
+        return ""
+    out, open_sub = ['<li><a href="#top" class="toc-top">(Top)</a></li>'], False
+    for lvl, hid, txt in heads:
+        txt = re.sub(r"<[^>]+>", "", txt)
+        if lvl == "2":
+            if open_sub:
+                out.append("</ul></li>"); open_sub = False
+            out.append(f'<li class="toc-h2"><a href="#{hid}">{txt}</a>')
+            out.append("<ul>"); open_sub = True
+        else:
+            out.append(f'<li class="toc-h3"><a href="#{hid}">{txt}</a></li>')
+    if open_sub:
+        out.append("</ul></li>")
+    html_ = "".join(out).replace("<ul></ul>", "")
+    return ('<nav id="toc-side" aria-label="Contents"><div class="toc-side-head"><span>Contents</span>'
+            '<button type="button" id="toc-side-hide">hide</button></div>'
+            f'<ul>{html_}</ul></nav>')
+
+
 def insert_toc(body_html, toc):
     if not toc:
         return body_html
@@ -208,7 +231,11 @@ def main():
         if i == 0:
             items = [("", '<a href="index.html">Main page</a>')] + items
         lis = "".join(f'<li class="{c}">{h}</li>' for c, h in items)
-        nav.append(f'<nav class="portal"><h3>{head}</h3><div class="body"><ul>{lis}</ul></div></nav>')
+        if i == 0:
+            nav.append(f'<div class="portal portal-first"><ul>{lis}</ul></div>')
+        else:
+            pid = slugify(re.sub(r"<[^>]+>", "", head)) or f"p{i}"
+            nav.append(f'<details class="portal" data-portal="{pid}" open><summary>{head}</summary><ul>{lis}</ul></details>')
     nav_html = "\n".join(nav)
 
     footer_note = ""
@@ -241,8 +268,10 @@ def main():
 
         plain = re.sub(r"<pre class=\"mermaid\">.*?</pre>", " ", body, flags=re.S)
         plain = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", plain))).strip()
+        side_toc = build_side_toc(body)
         body = insert_toc(body, build_toc(body))
         content = infobox + body
+        info_text = " ".join(f"{k} {re.sub(r'<[^>]+>', '', v)}" for k, v in (rows or []))
 
         cats = page_categories(name, sidebar_md)
         cat_html = ""
@@ -263,13 +292,12 @@ def main():
                      EDITED=edited_html,
                      FOOTNOTE=footer_note,
                      SUBTITLE="" if name == "Home" else f"From {html.escape(SITE_NAME)}, {html.escape(TAGLINE.lower())}",
-                     EDIT_URL=f"https://github.com/{REPO}/wiki/{name}/_edit",
-                     HISTORY_URL=f"https://github.com/{REPO}/wiki/{name}/_history",
+                     SIDETOC=side_toc,
                      PAGE=name,
-                     MAINPAGE_CLASS="mainpage" if name == "Home" else "")
+                     MAINPAGE_CLASS=("mainpage " if name == "Home" else "") + ("has-toc" if side_toc else ""))
         open(os.path.join(a.out, name + ".html"), "w", encoding="utf-8").write(out)
 
-        search_index.append({"p": name, "t": title, "x": plain[:4000]})
+        search_index.append({"p": name, "t": title, "x": (html.unescape(info_text) + " " + plain)[:20000]})
 
     shutil.copy(os.path.join(a.out, "Home.html"), os.path.join(a.out, "index.html"))
     # Search results page
@@ -277,8 +305,7 @@ def main():
                      TAGLINE=html.escape(TAGLINE), NAV=nav_html,
                      CONTENT='<div id="search-results"><p>Searching…</p></div>',
                      CATEGORIES="", EDITED="", FOOTNOTE=footer_note, SUBTITLE="",
-                     EDIT_URL=f"https://github.com/{REPO}/wiki", HISTORY_URL=f"https://github.com/{REPO}/wiki/_history",
-                     PAGE="Special:Search", MAINPAGE_CLASS="")
+                     SIDETOC="", PAGE="search", MAINPAGE_CLASS="")
     open(os.path.join(a.out, "search.html"), "w", encoding="utf-8").write(sp_html)
     json.dump(search_index, open(os.path.join(a.out, "search.json"), "w", encoding="utf-8"))
     open(os.path.join(a.out, ".nojekyll"), "w").close()

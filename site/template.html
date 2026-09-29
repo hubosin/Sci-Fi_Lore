@@ -6,60 +6,56 @@
 <title>{{TITLE}} - {{SITE}}</title>
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script>
+  // Restore the reader's panel choices before the page paints (no flicker).
+  try {
+    if (localStorage.getItem('nav-collapsed') === '1') document.documentElement.classList.add('nav-collapsed');
+    if (localStorage.getItem('toc-hidden') === '1') document.documentElement.classList.add('toc-hidden');
+  } catch (e) {}
+</script>
 </head>
-<body class="{{MAINPAGE_CLASS}}">
-<div id="mw-page-base"></div>
-<div id="mw-head-base"></div>
+<body class="{{MAINPAGE_CLASS}}" id="top">
 
-<div id="content" class="mw-body">
-  <h1 id="firstHeading">{{TITLE}}</h1>
-  <div id="bodyContent">
+<header id="site-header">
+  <button id="nav-toggle" type="button" aria-label="Toggle menu" title="Show or hide the menu">
+    <span></span><span></span><span></span>
+  </button>
+  <a class="brand" href="index.html" title="Visit the main page">
+    <img src="logo.svg" alt="">
+    <span class="brand-text"><span class="wordmark">{{SITE}}</span><span class="tagline">{{TAGLINE}}</span></span>
+  </a>
+  <form id="p-search" action="search.html" method="get" autocomplete="off" role="search">
+    <input type="search" name="q" id="searchInput" placeholder="Search {{SITE}}" aria-label="Search {{SITE}}">
+    <button type="submit" id="searchButton">Search</button>
+    <div id="suggestions" role="listbox"></div>
+  </form>
+</header>
+
+<div id="page">
+  <div id="mw-panel" aria-label="Site menu">
+    {{NAV}}
+  </div>
+
+  <main id="content">
+    <h1 id="firstHeading">{{TITLE}}</h1>
     <div id="siteSub">{{SUBTITLE}}</div>
     <div id="mw-content-text">
 {{CONTENT}}
     </div>
     {{CATEGORIES}}
-  </div>
+    <div id="footer">
+      <p>{{EDITED}}</p>
+      <p>{{FOOTNOTE}}</p>
+    </div>
+  </main>
+
+  <aside id="toc-column">
+    {{SIDETOC}}
+  </aside>
 </div>
 
-<div id="mw-head">
-  <button id="menu-toggle" aria-label="Menu" onclick="document.body.classList.toggle('nav-open')">&#9776;</button>
-  <div id="left-navigation">
-    <ul class="tabs">
-      <li class="selected"><a href="{{PAGE}}.html">Article</a></li>
-    </ul>
-  </div>
-  <div id="right-navigation">
-    <ul class="tabs">
-      <li class="selected"><a href="{{PAGE}}.html">Read</a></li>
-      <li><a href="{{EDIT_URL}}">Edit</a></li>
-      <li><a href="{{HISTORY_URL}}">View history</a></li>
-    </ul>
-    <form id="p-search" action="search.html" method="get" autocomplete="off">
-      <input type="search" name="q" id="searchInput" placeholder="Search {{SITE}}" aria-label="Search">
-      <button type="submit" id="searchButton" aria-label="Go">&#128269;</button>
-      <ul id="suggestions"></ul>
-    </form>
-  </div>
-</div>
-
-<div id="mw-panel">
-  <div id="p-logo">
-    <a href="index.html" title="Visit the main page">
-      <img src="logo.svg" alt="">
-      <span class="wordmark">{{SITE}}</span>
-      <span class="tagline">{{TAGLINE}}</span>
-    </a>
-  </div>
-  {{NAV}}
-</div>
-
-<div id="footer">
-  <ul id="footer-info">
-    <li>{{EDITED}}</li>
-    <li>{{FOOTNOTE}}</li>
-  </ul>
-</div>
+<button id="toc-side-show" type="button" title="Show contents">Contents</button>
+<div id="nav-scrim"></div>
 
 <script src="wiki.js"></script>
 <script>
