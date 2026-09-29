@@ -1,26 +1,29 @@
-// Graph view: every wiki page as a node, every link between pages as an edge.
-// Pages are pulled toward their sidebar section (and sub-category) so related
-// pages sit together in labelled clusters.
+// Graph view: every wiki page is a dot, every link between pages is a line.
+// Layout is a plain force simulation (like Obsidian's graph): links pull pages
+// together, pages push each other apart, and a gentle pull keeps it centred.
 (function () {
-  var view, canvas, ctx, tip, data, nodes = [], links = [], byId = {};
-  var groups = [], groupInfo = {}, hidden = {}, adj = {};
+  var view, stage, canvas, ctx, tip, data, nodes = [], links = [], byId = {}, adj = {};
+  var groups = [], colors = {}, hidden = {};
   var W = 0, H = 0, DPR = 1;
-  var cam = { x: 0, y: 0, k: 1 };
+  var cam = { x: 0, y: 0, k: 1 }, autoFit = true;
   var hover = null, dragNode = null, panning = null, moved = false;
-  var alpha = 1, running = false, query = '', localOnly = false;
+  var alpha = 0, running = false, query = '', localOnly = false, near = null;
   var current = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '');
-  if (current === 'index') current = 'Home';
+  if (current === 'index' || current === '') current = 'Home';
 
-  var PALETTE = ['#3366cc', '#dc3912', '#ff9900', '#109618', '#990099', '#0099c6',
-                 '#dd4477', '#66aa00', '#b82e2e', '#316395', '#994499', '#22aa99'];
+  var PALETTE = ['#5b7bd5', '#d96c4f', '#e0a33a', '#4fa35a', '#a45fb8', '#3aa6bf',
+                 '#d4668f', '#8aab3a', '#b3544f', '#5a7a9c', '#9b6fb0', '#3fa596'];
 
+  // ---------- open / close ----------
   function open() {
     if (!view) build();
     view.hidden = false;
     document.documentElement.classList.add('graph-open');
-    resize();
-    if (data) { kick(); } else load();
-    setTimeout(function () { view.querySelector('.gv-search').focus({ preventScroll: true }); }, 50);
+    requestAnimationFrame(function () {
+      resize();
+      if (data) { autoFit = true; fitAll(); kick(0.3); } else load();
+    });
+    setTimeout(function () { view.querySelector('.gv-search').focus({ preventScroll: true }); }, 60);
   }
   function close() {
     if (!view) return;
@@ -37,152 +40,196 @@
       '<div class="gv-bar">' +
         '<strong class="gv-title">Graph view</strong>' +
         '<input class="gv-search" type="search" placeholder="Find a page…" aria-label="Find a page in the graph">' +
-        '<label class="gv-local"><input type="checkbox"> This page’s neighbourhood</label>' +
-        '<button type="button" class="gv-center">Centre on this page</button><button type="button" class="gv-fit">Show everything</button>' +
+        '<label class="gv-local"><input type="checkbox"> Only this page’s links</label>' +
+        '<button type="button" class="gv-center">Go to this page</button>' +
+        '<button type="button" class="gv-fit">Fit to screen</button>' +
         '<button type="button" class="gv-close" aria-label="Close graph">✕</button>' +
       '</div>' +
-      '<div class="gv-legend"></div>' +
-      '<canvas></canvas><div class="gv-tip" hidden></div>' +
-      '<div class="gv-help">Scroll to zoom · drag to move · click a page to open it · Esc to close</div>';
+      '<div class="gv-stage"><canvas></canvas><div class="gv-legend"></div><div class="gv-tip" hidden></div>' +
+      '<div class="gv-help">Scroll or pinch to zoom · drag to move · click a page to open it · Esc to close</div></div>';
     document.body.appendChild(view);
+    stage = view.querySelector('.gv-stage');
     canvas = view.querySelector('canvas');
     ctx = canvas.getContext('2d');
     tip = view.querySelector('.gv-tip');
     view.querySelector('.gv-close').onclick = close;
-    view.querySelector('.gv-center').onclick = function () { focusOn(current, true); };
-    view.querySelector('.gv-fit').onclick = function () { fitAll(); };
-    view.querySelector('.gv-search').oninput = function (e) { query = e.target.value.trim().toLowerCase(); draw(); };
-    view.querySelector('.gv-search').onkeydown = function (e) {
-      if (e.key === 'Enter') {
-        var m = nodes.filter(function (n) { return visible(n) && n.t.toLowerCase().indexOf(query) >= 0; })[0];
-        if (m) focusOn(m.id, true);
-      }
+    view.querySelector('.gv-center').onclick = function () { autoFit = false; focusOn(current); };
+    view.querySelector('.gv-fit').onclick = function () { autoFit = true; fitAll(true); };
+    var search = view.querySelector('.gv-search');
+    search.oninput = function () { query = search.value.trim().toLowerCase(); draw(); };
+    search.onkeydown = function (e) {
+      if (e.key !== 'Enter' || !query) return;
+      var m = nodes.filter(function (n) { return visible(n) && n.t.toLowerCase().indexOf(query) >= 0; })[0];
+      if (m) { autoFit = false; focusOn(m.id); }
     };
     view.querySelector('.gv-local input').onchange = function (e) {
-      localOnly = e.target.checked; near = null;
-      fitAll(); kick();
+      localOnly = e.target.checked; near = null; autoFit = true; fitAll(true); kick(0.5);
     };
-    window.addEventListener('resize', function () { if (!view.hidden) resize(); });
+    if (window.ResizeObserver) new ResizeObserver(function () { if (!view.hidden) resize(); }).observe(stage);
+    else window.addEventListener('resize', function () { if (!view.hidden) resize(); });
     bindPointer();
   }
 
   function load() {
     fetch('graph.json').then(function (r) { return r.json(); }).then(function (d) {
-      data = d; setup(); fitAll(); kick();
-      setTimeout(fitAll, 1200);
+      data = d; setup();
+      alpha = 1;
+      for (var i = 0; i < 300; i++) step();   // settle before the first frame
+      alpha = 0.08;
+      autoFit = true; fitAll(); kick(0.08);
     });
   }
 
+  // ---------- data ----------
   function setup() {
     var names = data.groups.slice();
     data.nodes.forEach(function (n) { if (names.indexOf(n.g) < 0) names.push(n.g); });
     groups = names.filter(function (g) { return data.nodes.some(function (n) { return n.g === g; }); });
-    var R = 220 + 62 * groups.length;
-    groups.forEach(function (g, i) {
-      var a = (i / groups.length) * Math.PI * 2 - Math.PI / 2;
-      groupInfo[g] = { x: Math.cos(a) * R, y: Math.sin(a) * R, color: PALETTE[i % PALETTE.length], subs: {} };
-    });
-    // sub-categories orbit their section's centre
-    groups.forEach(function (g) {
-      var subs = [];
-      data.nodes.forEach(function (n) { if (n.g === g && subs.indexOf(n.s) < 0) subs.push(n.s); });
-      var gi = groupInfo[g];
-      subs.forEach(function (s, j) {
-        if (subs.length === 1) { gi.subs[s] = { x: gi.x, y: gi.y }; return; }
-        var a = (j / subs.length) * Math.PI * 2;
-        var r = 40 + 14 * subs.length;
-        gi.subs[s] = { x: gi.x + Math.cos(a) * r, y: gi.y + Math.sin(a) * r };
-      });
-    });
+    groups.forEach(function (g, i) { colors[g] = PALETTE[i % PALETTE.length]; });
+
+    var golden = Math.PI * (3 - Math.sqrt(5));
     nodes = data.nodes.map(function (n, i) {
-      var anchor = groupInfo[n.g].subs[n.s];
-      var o = {
-        id: n.id, t: n.t, g: n.g, s: n.s, d: n.d,
-        x: anchor.x + (Math.random() - 0.5) * 60, y: anchor.y + (Math.random() - 0.5) * 60,
-        vx: 0, vy: 0, ax: anchor.x, ay: anchor.y,
-        r: 4 + Math.sqrt(n.d) * 1.8
-      };
+      var r = 12 * Math.sqrt(0.5 + i), a = i * golden;   // sunflower start, like d3
+      var o = { id: n.id, t: n.t, g: n.g, s: n.s, d: n.d, x: r * Math.cos(a), y: r * Math.sin(a), vx: 0, vy: 0,
+                r: 2.6 + Math.sqrt(n.d) * 1.1 };
       byId[o.id] = o; adj[o.id] = {};
       return o;
     });
-    links = data.links.map(function (l) {
+    links = data.links.filter(function (l) { return byId[l[0]] && byId[l[1]]; }).map(function (l) {
       adj[l[0]][l[1]] = 1; adj[l[1]][l[0]] = 1;
       return { a: byId[l[0]], b: byId[l[1]] };
     });
-    // legend
+    links.forEach(function (l) {
+      var ca = Object.keys(adj[l.a.id]).length, cb = Object.keys(adj[l.b.id]).length;
+      l.strength = 1 / Math.min(ca, cb);
+      l.bias = ca / (ca + cb);
+    });
+
     var lg = view.querySelector('.gv-legend');
-    lg.innerHTML = '<button type="button" class="gv-legend-head">Sections</button>' + groups.map(function (g) {
-      return '<button type="button" data-g="' + g + '"><i style="background:' + groupInfo[g].color + '"></i>' + g + '</button>';
+    lg.innerHTML = '<button type="button" class="gv-legend-head">Colour key</button>' + groups.map(function (g) {
+      return '<button type="button" data-g="' + g + '"><i style="background:' + colors[g] + '"></i>' + g + '</button>';
     }).join('');
     if (window.matchMedia('(max-width: 720px)').matches) lg.classList.add('folded');
     lg.querySelector('.gv-legend-head').onclick = function () { lg.classList.toggle('folded'); };
     lg.querySelectorAll('button[data-g]').forEach(function (b) {
       b.onclick = function () {
         var g = b.getAttribute('data-g');
-        hidden[g] = !hidden[g]; b.classList.toggle('off', !!hidden[g]); kick();
+        hidden[g] = !hidden[g]; b.classList.toggle('off', !!hidden[g]); kick(0.4);
       };
     });
   }
 
-  function neighbourhood() {
-    var keep = {}; keep[current] = 1;
-    Object.keys(adj[current] || {}).forEach(function (a) { keep[a] = 1; });
-    return keep;
-  }
-  var near = null;
   function visible(n) {
     if (hidden[n.g]) return false;
-    if (localOnly) { near = near || neighbourhood(); return !!near[n.id]; }
+    if (localOnly) {
+      if (!near) { near = {}; near[current] = 1; Object.keys(adj[current] || {}).forEach(function (a) { near[a] = 1; }); }
+      return !!near[n.id];
+    }
     return true;
   }
 
   // ---------- simulation ----------
-  function kick() { alpha = Math.max(alpha, 0.6); near = null; if (!running) { running = true; requestAnimationFrame(loop); } }
+  function kick(a) {
+    alpha = Math.max(alpha, a || 0.3);
+    if (!running) { running = true; requestAnimationFrame(loop); }
+  }
   function loop() {
     if (!running || view.hidden) { running = false; return; }
-    step(); draw();
-    if (alpha > 0.005 || dragNode) requestAnimationFrame(loop); else running = false;
+    step();
+    if (autoFit) fitAll();
+    draw();
+    if (alpha > 0.002 || dragNode) requestAnimationFrame(loop); else running = false;
   }
   function step() {
-    var vis = nodes.filter(visible), i, j;
-    for (i = 0; i < vis.length; i++) {
-      var a = vis[i];
-      for (j = i + 1; j < vis.length; j++) {
-        var b = vis[j], dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy + 0.01;
-        if (d2 > 40000) continue;
-        var f = (a.g === b.g ? 1300 : 900) / d2 * alpha, d = Math.sqrt(d2);
-        var fx = dx / d * f, fy = dy / d * f;
-        a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
-      }
-    }
+    var vis = nodes.filter(visible), n = vis.length, i, j, a, b, dx, dy, d2, d, f;
+
+    // links pull connected pages together
     links.forEach(function (l) {
       if (!visible(l.a) || !visible(l.b)) return;
-      var dx = l.b.x - l.a.x, dy = l.b.y - l.a.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
-      var same = l.a.g === l.b.g;
-      var f = (d - (same ? 60 : 200)) * (same ? 0.025 : 0.0006) * alpha;
-      var fx = dx / d * f, fy = dy / d * f;
-      l.a.vx += fx; l.a.vy += fy; l.b.vx -= fx; l.b.vy -= fy;
+      dx = l.b.x + l.b.vx - l.a.x - l.a.vx; dy = l.b.y + l.b.vy - l.a.y - l.a.vy;
+      d = Math.sqrt(dx * dx + dy * dy) || 1;
+      f = (d - 34) / d * alpha * l.strength;
+      dx *= f; dy *= f;
+      l.b.vx -= dx * l.bias; l.b.vy -= dy * l.bias;
+      l.a.vx += dx * (1 - l.bias); l.a.vy += dy * (1 - l.bias);
     });
-    vis.forEach(function (n) {
-      n.vx += (n.ax - n.x) * 0.04 * alpha;
-      n.vy += (n.ay - n.y) * 0.04 * alpha;
-      if (n === dragNode) { n.vx = n.vy = 0; return; }
-      n.vx *= 0.82; n.vy *= 0.82;
-      n.x += n.vx; n.y += n.vy;
+
+    // every page pushes every other page away (close ones most)
+    for (i = 0; i < n; i++) {
+      a = vis[i];
+      for (j = i + 1; j < n; j++) {
+        b = vis[j];
+        dx = b.x - a.x; dy = b.y - a.y; d2 = dx * dx + dy * dy;
+        if (d2 > 90000) continue;
+        if (d2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 1; }
+        f = -110 * alpha / d2;
+        a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
+        // keep dots from overlapping
+        var min = a.r + b.r + 3;
+        if (d2 < min * min) {
+          d = Math.sqrt(d2); var push = (min - d) / d * 0.5;
+          a.vx -= dx * push * 0.5; a.vy -= dy * push * 0.5; b.vx += dx * push * 0.5; b.vy += dy * push * 0.5;
+        }
+      }
+    }
+
+    // gentle pull toward the centre keeps loose pages nearby
+    vis.forEach(function (p) {
+      p.vx -= p.x * 0.035 * alpha; p.vy -= p.y * 0.035 * alpha;
+      if (p === dragNode) { p.vx = p.vy = 0; return; }
+      p.vx *= 0.6; p.vy *= 0.6;
+      p.x += p.vx; p.y += p.vy;
     });
-    alpha *= 0.985;
+    alpha += (0 - alpha) * 0.0228;
   }
 
-  // ---------- drawing ----------
+  // ---------- camera ----------
   function resize() {
     DPR = window.devicePixelRatio || 1;
-    W = canvas.clientWidth; H = canvas.clientHeight;
-    canvas.width = W * DPR; canvas.height = H * DPR;
+    var r = stage.getBoundingClientRect();
+    W = Math.max(1, r.width); H = Math.max(1, r.height);
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    if (autoFit) fitAll();
     draw();
   }
-  function toScreen(x, y) { return [(x - cam.x) * cam.k + W / 2, (y - cam.y) * cam.k + H / 2]; }
+  function bounds() {
+    var vis = nodes.filter(visible); if (!vis.length) return null;
+    var b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    vis.forEach(function (n) {
+      b.x0 = Math.min(b.x0, n.x - n.r); b.y0 = Math.min(b.y0, n.y - n.r);
+      b.x1 = Math.max(b.x1, n.x + n.r); b.y1 = Math.max(b.y1, n.y + n.r);
+    });
+    return b;
+  }
+  function fitAll(animate) {
+    var b = bounds(); if (!b) return;
+    var pad = 60;
+    var k = Math.min(1.6, (W - pad * 2) / Math.max(1, b.x1 - b.x0), (H - pad * 2) / Math.max(1, b.y1 - b.y0));
+    var tx = (b.x0 + b.x1) / 2, ty = (b.y0 + b.y1) / 2;
+    if (animate) return glide(tx, ty, k);
+    cam.x = tx; cam.y = ty; cam.k = Math.max(0.2, k);
+    draw();
+  }
+  function focusOn(id) {
+    var n = byId[id]; if (!n) return;
+    glide(n.x, n.y, Math.max(cam.k, 1.6));
+  }
+  function glide(tx, ty, tk) {
+    var sx = cam.x, sy = cam.y, sk = cam.k, t0 = performance.now();
+    (function anim(t) {
+      var p = Math.min(1, (t - t0) / 380), e = 1 - Math.pow(1 - p, 3);
+      cam.x = sx + (tx - sx) * e; cam.y = sy + (ty - sy) * e; cam.k = sk + (tk - sk) * e;
+      draw(); if (p < 1) requestAnimationFrame(anim);
+    })(t0);
+  }
   function toWorld(x, y) { return [(x - W / 2) / cam.k + cam.x, (y - H / 2) / cam.k + cam.y]; }
 
+  // ---------- drawing ----------
+  function rgba(hex, a) {
+    var v = parseInt(hex.slice(1), 16);
+    return 'rgba(' + (v >> 16) + ',' + ((v >> 8) & 255) + ',' + (v & 255) + ',' + a + ')';
+  }
   function draw() {
     if (!ctx || !data) return;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -191,85 +238,45 @@
     ctx.translate(W / 2, H / 2); ctx.scale(cam.k, cam.k); ctx.translate(-cam.x, -cam.y);
 
     var focus = hover ? hover.id : null;
-    var matches = query ? function (n) { return n.t.toLowerCase().indexOf(query) >= 0; } : null;
+    var match = query ? function (n) { return n.t.toLowerCase().indexOf(query) >= 0; } : null;
+    var lit = function (n) { return !focus || n.id === focus || adj[focus][n.id]; };
 
-    // cluster backdrops
-    groups.forEach(function (g) {
-      if (hidden[g]) return;
-      var ms = nodes.filter(function (n) { return n.g === g && visible(n); });
-      if (!ms.length) return;
-      var cx = 0, cy = 0;
-      ms.forEach(function (n) { cx += n.x; cy += n.y; }); cx /= ms.length; cy /= ms.length;
-      var ds = ms.map(function (n) { return Math.hypot(n.x - cx, n.y - cy) + n.r + 18; }).sort(function (a, b) { return a - b; });
-      var r = Math.max(34, ds[Math.floor((ds.length - 1) * 0.9)]);
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = hexA(groupInfo[g].color, 0.06); ctx.fill();
-      ctx.strokeStyle = hexA(groupInfo[g].color, 0.25); ctx.lineWidth = 1 / cam.k; ctx.stroke();
-      ctx.fillStyle = groupInfo[g].color;
-      ctx.font = 'bold ' + (14 / Math.max(cam.k, 0.6)) + 'px Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(g, cx, cy - r - 6 / cam.k);
-    });
-
-    // edges
+    // lines
+    ctx.lineWidth = 1 / cam.k;
     links.forEach(function (l) {
       if (!visible(l.a) || !visible(l.b)) return;
       var hot = focus && (l.a.id === focus || l.b.id === focus);
-      ctx.beginPath(); ctx.moveTo(l.a.x, l.a.y); ctx.lineTo(l.b.x, l.b.y);
-      ctx.strokeStyle = hot ? 'rgba(51,102,204,0.9)' : (focus || matches ? 'rgba(160,166,175,0.12)' : (l.a.g === l.b.g ? 'rgba(140,146,155,0.55)' : 'rgba(160,166,175,0.22)'));
-      ctx.lineWidth = (hot ? 1.8 : 0.8) / cam.k;
-      ctx.stroke();
+      ctx.strokeStyle = hot ? 'rgba(91,123,213,0.95)'
+        : (focus || match) ? 'rgba(150,155,165,0.12)' : 'rgba(150,155,165,0.42)';
+      ctx.lineWidth = (hot ? 1.6 : 1) / cam.k;
+      ctx.beginPath(); ctx.moveTo(l.a.x, l.a.y); ctx.lineTo(l.b.x, l.b.y); ctx.stroke();
     });
 
-    // nodes
+    // dots
     nodes.forEach(function (n) {
       if (!visible(n)) return;
-      var dim = (focus && n.id !== focus && !adj[focus][n.id]) || (matches && !matches(n));
+      var dim = !lit(n) || (match && !match(n));
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-      ctx.fillStyle = dim ? hexA(groupInfo[n.g].color, 0.18) : groupInfo[n.g].color;
+      ctx.fillStyle = dim ? rgba(colors[n.g], 0.18) : (n.id === focus ? '#3a5fcf' : colors[n.g]);
       ctx.fill();
-      if (n.id === current) {
-        ctx.lineWidth = 3 / cam.k; ctx.strokeStyle = '#202122'; ctx.stroke();
-      }
+      if (n.id === current) { ctx.lineWidth = 2.2 / cam.k; ctx.strokeStyle = '#202122'; ctx.stroke(); }
     });
 
-    // labels
-    ctx.textAlign = 'center';
+    // labels fade in as you zoom, like Obsidian
+    var base = Math.max(0, Math.min(1, (cam.k - 0.75) / 0.6));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    var fs = 11 / cam.k;
+    ctx.font = fs + 'px sans-serif';
     nodes.forEach(function (n) {
       if (!visible(n)) return;
-      var important = localOnly || n.id === current || n.id === focus || (focus && adj[focus][n.id]) || (matches && matches(n));
-      if (!important && cam.k < 0.85 && n.d < 8) return;
-      var dim = (focus && !important) || (matches && !matches(n));
-      ctx.font = (n.id === focus || n.id === current ? 'bold ' : '') + (11 / Math.max(cam.k, 0.7)) + 'px sans-serif';
-      ctx.fillStyle = dim ? 'rgba(32,33,34,0.25)' : '#202122';
-      ctx.fillText(n.t, n.x, n.y + n.r + 11 / Math.max(cam.k, 0.7));
+      var strong = n.id === current || n.id === focus || (focus && adj[focus][n.id]) || (match && match(n)) || localOnly;
+      var op = strong ? 1 : (focus || match ? base * 0.25 : base);
+      if (op < 0.03) return;
+      ctx.font = ((n.id === focus || n.id === current) ? 'bold ' : '') + fs + 'px sans-serif';
+      ctx.fillStyle = 'rgba(32,33,34,' + op + ')';
+      ctx.fillText(n.t, n.x, n.y + n.r + 3 / cam.k);
     });
     ctx.restore();
-  }
-
-  function hexA(hex, a) {
-    var v = parseInt(hex.slice(1), 16);
-    return 'rgba(' + (v >> 16) + ',' + ((v >> 8) & 255) + ',' + (v & 255) + ',' + a + ')';
-  }
-
-  function fitAll() {
-    var vis = nodes.filter(visible); if (!vis.length) return;
-    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    vis.forEach(function (n) { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y); });
-    cam.x = (x0 + x1) / 2; cam.y = (y0 + y1) / 2;
-    cam.k = Math.min(1.2, Math.min((W - 80) / (x1 - x0 + 120), (H - 60) / (y1 - y0 + 120)));
-    draw();
-  }
-  function focusOn(id, animate) {
-    var n = byId[id]; if (!n) return;
-    var tx = n.x, ty = n.y, tk = localOnly ? 1.4 : Math.max(cam.k, 1.1);
-    if (!animate) { cam.x = tx; cam.y = ty; cam.k = localOnly ? 1.4 : 0.75; draw(); return; }
-    var sx = cam.x, sy = cam.y, sk = cam.k, t0 = performance.now();
-    (function anim(t) {
-      var p = Math.min(1, (t - t0) / 350), e = p * (2 - p);
-      cam.x = sx + (tx - sx) * e; cam.y = sy + (ty - sy) * e; cam.k = sk + (tk - sk) * e;
-      draw(); if (p < 1) requestAnimationFrame(anim);
-    })(t0);
   }
 
   // ---------- interaction ----------
@@ -278,7 +285,7 @@
     nodes.forEach(function (n) {
       if (!visible(n)) return;
       var d = Math.hypot(n.x - w[0], n.y - w[1]);
-      if (d < n.r + 6 / cam.k && d < bd) { bd = d; best = n; }
+      if (d < n.r + 5 / cam.k && d < bd) { bd = d; best = n; }
     });
     return best;
   }
@@ -287,7 +294,8 @@
   var touches = {}, pinch = null;
   function bindPointer() {
     canvas.addEventListener('pointerdown', function (e) {
-      var p = pos(e); moved = false;
+      var p = pos(e); moved = false; autoFit = false;
+      canvas.setPointerCapture(e.pointerId);
       touches[e.pointerId] = p;
       var ids = Object.keys(touches);
       if (ids.length === 2) {
@@ -296,9 +304,8 @@
         dragNode = null; panning = null; moved = true;
         return;
       }
-      canvas.setPointerCapture(e.pointerId);
       var n = pick(p[0], p[1]);
-      if (n) { dragNode = n; kick(); }
+      if (n) { dragNode = n; kick(0.3); }
       else panning = { x: p[0], y: p[1], cx: cam.x, cy: cam.y };
     });
     canvas.addEventListener('pointermove', function (e) {
@@ -309,7 +316,7 @@
         if (ids.length === 2) {
           var a = touches[ids[0]], b = touches[ids[1]];
           var mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], before = toWorld(mid[0], mid[1]);
-          cam.k = Math.max(0.15, Math.min(4, pinch.k * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d));
+          cam.k = Math.max(0.15, Math.min(5, pinch.k * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d));
           var after = toWorld(mid[0], mid[1]);
           cam.x += before[0] - after[0]; cam.y += before[1] - after[1];
           draw();
@@ -317,12 +324,14 @@
         return;
       }
       if (dragNode) {
-        var w = toWorld(p[0], p[1]); dragNode.x = w[0]; dragNode.y = w[1]; moved = true; alpha = Math.max(alpha, 0.3);
+        var w = toWorld(p[0], p[1]); dragNode.x = w[0]; dragNode.y = w[1]; moved = true;
+        alpha = Math.max(alpha, 0.25);
         return;
       }
       if (panning) {
         cam.x = panning.cx - (p[0] - panning.x) / cam.k; cam.y = panning.cy - (p[1] - panning.y) / cam.k;
-        moved = true; draw(); return;
+        if (Math.abs(p[0] - panning.x) + Math.abs(p[1] - panning.y) > 3) moved = true;
+        draw(); return;
       }
       var n = pick(p[0], p[1]);
       if (n !== hover) {
@@ -348,10 +357,11 @@
       }
       dragNode = null; panning = null;
     });
+    canvas.addEventListener('pointerleave', function () { if (hover && !dragNode) { hover = null; tip.hidden = true; draw(); } });
     canvas.addEventListener('wheel', function (e) {
-      e.preventDefault();
+      e.preventDefault(); autoFit = false;
       var p = pos(e), before = toWorld(p[0], p[1]);
-      cam.k = Math.max(0.15, Math.min(4, cam.k * Math.exp(-e.deltaY * 0.0015)));
+      cam.k = Math.max(0.15, Math.min(5, cam.k * Math.exp(-e.deltaY * 0.0015)));
       var after = toWorld(p[0], p[1]);
       cam.x += before[0] - after[0]; cam.y += before[1] - after[1];
       draw();
@@ -363,7 +373,7 @@
 
   // Open with the header button or the G key
   document.addEventListener('keydown', function (e) {
-    if ((e.key === 'g' || e.key === 'G') && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !e.ctrlKey && !e.metaKey) {
+    if ((e.key === 'g' || e.key === 'G') && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault(); window.toggleGraph();
     }
   });
