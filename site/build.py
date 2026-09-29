@@ -154,38 +154,115 @@ def insert_toc(body_html, toc):
     return body_html[:i] + toc + body_html[i:] if i >= 0 else body_html + toc
 
 
+LINK_RE = r"\]\(([A-Za-z0-9\-]+)(?:#[^)]*)?\)"
+
+
+def plain_text(md):
+    return re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", md).replace("*", "").replace("_", " ").strip()
+
+
 def parse_sidebar(md_text):
-    """Return [(heading_html, [item_html, ...]), ...] from _Sidebar.md."""
-    portals, cur = [], None
+    """Turn _Sidebar.md into a tree.
+
+    **Bold line**            -> a top-level section
+    - item                   -> an entry in that section
+      - nested item          -> goes inside the item above it (any depth)
+    An entry that has nested items becomes a collapsible sub-category.
+    """
+    portals, stack = [], []
     for ln in md_text.split("\n"):
         if not ln.strip():
             continue
         m = re.match(r"^\*\*(.+)\*\*\s*$", ln.strip())
-        if m and not ln.startswith(" "):
-            cur = (inline_md(m.group(1)), [])
-            portals.append(cur)
+        if m and not ln[:1].isspace():
+            node = {"md": m.group(1), "children": [], "level": -1}
+            portals.append(node)
+            stack = [node]
             continue
-        m = re.match(r"^(\s*)[-*]\s+(.*)$", ln)
-        if m:
-            if cur is None:
-                cur = ("", []); portals.append(cur)
-            cls = "sub" if len(m.group(1)) >= 2 else ""
-            cur[1].append((cls, inline_md(m.group(2))))
+        m = re.match(r"^(\s*)[-*]\s+(.*)$", ln.replace("\t", "  "))
+        if not m:
+            continue
+        if not portals:
+            node = {"md": "", "children": [], "level": -1}
+            portals.append(node); stack = [node]
+        indent = len(m.group(1))
+        node = {"md": m.group(2), "children": [], "level": indent}
+        while len(stack) > 1 and stack[-1]["level"] >= indent:
+            stack.pop()
+        stack[-1]["children"].append(node)
+        stack.append(node)
     return portals
 
 
-def page_categories(name, sidebar_md):
-    """A page's categories are the sidebar sections it's listed under."""
-    cats, section = [], None
-    for ln in sidebar_md.split("\n"):
-        m = re.match(r"^\*\*(?:\[([^\]]+)\]\([^)]+\)|([^*]+))\*\*\s*$", ln.strip())
-        if m and not ln.startswith(" "):
-            section = (m.group(1) or m.group(2)).strip()
-            continue
-        if section and re.search(r"\]\(" + re.escape(name) + r"(#[^)]*)?\)", ln):
-            if section not in cats:
-                cats.append(section)
-    return cats
+def render_tree(nodes, depth):
+    out = []
+    for n in nodes:
+        label = inline_md(n["md"])
+        if n["children"]:
+            gid = slugify(plain_text(n["md"])) or "g"
+            out.append(f'<li class="navgroup-li"><details class="navgroup depth-{depth}" data-portal="{gid}">'
+                       f'<summary>{label}</summary><ul>{render_tree(n["children"], depth + 1)}</ul></details></li>')
+        else:
+            out.append(f"<li>{label}</li>")
+    return "".join(out)
+
+
+def render_nav(portals):
+    nav = []
+    for i, p in enumerate(portals):
+        lis = render_tree(p["children"], 1)
+        if i == 0:
+            nav.append(f'<div class="portal portal-first"><ul><li><a href="index.html">Main page</a></li>{lis}</ul></div>')
+        else:
+            pid = slugify(plain_text(p["md"])) or f"p{i}"
+            nav.append(f'<details class="portal" data-portal="{pid}" open><summary>{inline_md(p["md"])}</summary><ul>{lis}</ul></details>')
+    return "\n".join(nav)
+
+
+def category_paths(portals):
+    """page -> [section, sub-category, ...] from where it first appears in the sidebar."""
+    paths = {}
+    def walk(nodes, trail):
+        for n in nodes:
+            for t in re.findall(LINK_RE, n["md"]):
+                if t not in paths and trail:
+                    paths[t] = list(trail)
+            if n["children"]:
+                walk(n["children"], trail + [plain_text(n["md"])])
+    for i, p in enumerate(portals):
+        title = "Overview" if i == 0 else plain_text(p["md"])
+        for t in re.findall(LINK_RE, p["md"]):
+            paths.setdefault(t, [])       # a section's own page
+        walk(p["children"], [title])
+    return paths
+
+
+def category_listing(name, portals):
+    """If this page is a section or sub-category page, list everything filed under it."""
+    def find(nodes):
+        for n in nodes:
+            if re.search(r"\]\(" + re.escape(name) + r"(?:#[^)]*)?\)", n["md"]) and n["children"]:
+                return n
+            r = find(n["children"])
+            if r:
+                return r
+        return None
+    for i, p in enumerate(portals):
+        if i and re.search(r"\]\(" + re.escape(name) + r"(?:#[^)]*)?\)", p["md"]):
+            node = p
+            break
+    else:
+        node = find(portals)
+    if not node or not node["children"]:
+        return ""
+    def lst(nodes):
+        items = []
+        for n in nodes:
+            sub = f"<ul>{lst(n['children'])}</ul>" if n["children"] else ""
+            cls = ' class="cat-group"' if n["children"] else ""
+            items.append(f"<li{cls}>{inline_md(n['md'])}{sub}</li>")
+        return "".join(items)
+    return f'<h2 id="pages-in-this-category">Pages in this category</h2><div class="category-tree"><ul>{lst(node["children"])}</ul></div>'
 
 
 def last_edited(wiki_dir, filename):
@@ -215,7 +292,7 @@ def main():
     if os.path.exists(a.out):
         shutil.rmtree(a.out)
     os.makedirs(a.out)
-    for f in ("style.css", "wiki.js", "logo.svg"):
+    for f in ("style.css", "wiki.js", "graph.js", "logo.svg"):
         shutil.copy(os.path.join(HERE, f), a.out)
     if os.path.isdir(os.path.join(a.wiki, "images")):
         shutil.copytree(os.path.join(a.wiki, "images"), os.path.join(a.out, "images"))
@@ -226,34 +303,29 @@ def main():
     if os.path.exists(sp):
         sidebar_md = open(sp, encoding="utf-8").read()
     portals = parse_sidebar(sidebar_md)
-    nav = []
-    for i, (head, items) in enumerate(portals):
-        if i == 0:
-            items = [("", '<a href="index.html">Main page</a>')] + items
-        lis = "".join(f'<li class="{c}">{h}</li>' for c, h in items)
-        if i == 0:
-            nav.append(f'<div class="portal portal-first"><ul>{lis}</ul></div>')
-        else:
-            pid = slugify(re.sub(r"<[^>]+>", "", head)) or f"p{i}"
-            nav.append(f'<details class="portal" data-portal="{pid}" open><summary>{head}</summary><ul>{lis}</ul></details>')
-    nav_html = "\n".join(nav)
+    nav_html = render_nav(portals)
+    cat_paths = category_paths(portals)
 
     footer_note = ""
     fp = os.path.join(a.wiki, "_Footer.md")
     if os.path.exists(fp):
         footer_note = inline_md(open(fp, encoding="utf-8").read())
 
+    graph_links = []
     pages = sorted(f[:-3] for f in os.listdir(a.wiki)
                    if f.endswith(".md") and not f.startswith("_"))
     search_index = []
 
     for name in pages:
         src = open(os.path.join(a.wiki, name + ".md"), encoding="utf-8").read()
+        for t in set(re.findall(LINK_RE, src)):
+            if t != name:
+                graph_links.append((name, t))
         title = title_of(name)
         rows, body_md = extract_infobox(src) if name != "Home" else (None, src)
         img, body_md = first_image(body_md) if rows else (None, body_md)
 
-        body = md_to_html(mermaid_blocks(fix_links(body_md)))
+        body = md_to_html(mermaid_blocks(fix_links(body_md))) + category_listing(name, portals)
         body = re.sub(r"<table>", '<table class="wikitable">', body)
         body = thumbnails(body)
 
@@ -273,11 +345,11 @@ def main():
         content = infobox + body
         info_text = " ".join(f"{k} {re.sub(r'<[^>]+>', '', v)}" for k, v in (rows or []))
 
-        cats = page_categories(name, sidebar_md)
+        cats = cat_paths.get(name, [])
         cat_html = ""
         if cats:
-            links = " | ".join(f"<li>{html.escape(c)}</li>" for c in cats)
-            cat_html = f'<div id="catlinks"><b>Categories</b>: <ul>{links}</ul></div>'
+            crumbs = " › ".join(html.escape(c) for c in cats)
+            cat_html = f'<div id="catlinks"><b>Category</b>: {crumbs}</div>'
 
         edited = last_edited(a.wiki, name + ".md")
         edited_html = f"This page was last edited on {edited}." if edited else ""
@@ -308,6 +380,25 @@ def main():
                      SIDETOC="", PAGE="search", MAINPAGE_CLASS="")
     open(os.path.join(a.out, "search.html"), "w", encoding="utf-8").write(sp_html)
     json.dump(search_index, open(os.path.join(a.out, "search.json"), "w", encoding="utf-8"))
+
+    # Graph of every page and the links between them
+    page_set = set(pages)
+    edges = sorted({tuple(sorted(e)) for e in graph_links if e[1] in page_set})
+    deg = {p: 0 for p in pages}
+    for x, y in edges:
+        deg[x] += 1; deg[y] += 1
+    order = ["Overview"] + [plain_text(p["md"]) for i, p in enumerate(portals) if i]
+    nodes = []
+    for p in pages:
+        path = cat_paths.get(p)
+        if path is None:
+            path = ["Other"]
+        elif not path:  # a section's own page
+            path = [next(("Overview" if i == 0 else plain_text(q["md"]) for i, q in enumerate(portals)
+                          if re.search(r"\]\(" + re.escape(p) + r"[)#]", q["md"])), "Other")]
+        nodes.append({"id": p, "t": title_of(p), "g": path[0], "s": " › ".join(path[:2]), "d": deg[p]})
+    json.dump({"groups": order, "nodes": nodes, "links": edges},
+              open(os.path.join(a.out, "graph.json"), "w", encoding="utf-8"))
     open(os.path.join(a.out, ".nojekyll"), "w").close()
     print(f"Built {len(pages)} pages into {a.out}")
 

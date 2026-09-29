@@ -89,20 +89,46 @@ html.nav-collapsed #mw-panel { visibility: hidden; }
 .portal ul { list-style: none; margin: 0; padding: 0.2em 0 0.4em 0.8em; }
 .portal li { font-size: 0.86em; line-height: 1.2em; padding: 0.22em 0; margin: 0; }
 .portal li.sub { padding-left: 0.9em; }
-.portal summary {
+.portal > summary {
   list-style: none; cursor: pointer; user-select: none;
   font-size: 0.78em; color: #54595d; padding: 0.45em 0 0.3em 0.8em; position: relative;
   background-image: linear-gradient(to right, rgba(200,204,209,0) 0, #c8ccd1 33%, #c8ccd1 66%, rgba(200,204,209,0) 100%);
   background-position: center bottom; background-repeat: no-repeat; background-size: 100% 1px;
 }
-.portal summary::-webkit-details-marker { display: none; }
-.portal summary::before {
+.portal > summary::-webkit-details-marker { display: none; }
+.portal > summary::before {
   content: ""; position: absolute; left: 0; top: 0.85em;
   border: 4px solid transparent; border-top-color: #72777d; border-bottom: 0;
 }
-.portal:not([open]) summary::before { border: 4px solid transparent; border-left-color: #72777d; border-right: 0; top: 0.7em; }
-.portal summary a, .portal summary a:visited { color: #54595d; }
-.portal summary:hover { color: #202122; }
+.portal:not([open]) > summary::before { border: 4px solid transparent; border-left-color: #72777d; border-right: 0; top: 0.7em; }
+.portal > summary a, .portal > summary a:visited { color: #54595d; }
+#mw-panel a.current { font-weight: bold; color: #202122; }
+
+/* nested sub-categories */
+.navgroup-li { padding: 0 !important; }
+.navgroup > summary {
+  list-style: none; cursor: pointer; user-select: none; position: relative;
+  padding: 0.22em 0 0.22em 0.95em; line-height: 1.2em; color: #202122;
+}
+.navgroup > summary::-webkit-details-marker { display: none; }
+.navgroup > summary::before {
+  content: ""; position: absolute; left: 0.1em; top: 0.62em;
+  border: 4px solid transparent; border-left-color: #72777d; border-right: 0;
+}
+.navgroup[open] > summary::before { border: 4px solid transparent; border-top-color: #72777d; border-bottom: 0; top: 0.72em; left: 0; }
+.navgroup > summary:hover { background: #eaecf0; }
+.navgroup > ul { padding: 0 0 0.1em 0.95em !important; margin-left: 0.25em; border-left: 1px solid #dfe2e6; }
+.navgroup > ul > li { font-size: 1em; }
+
+/* category listings on section pages */
+.category-tree ul { list-style: none; margin: 0.2em 0 0.2em 0; padding-left: 1.2em; }
+.category-tree > ul { padding-left: 0; column-width: 16em; column-gap: 2em; }
+.category-tree li { margin: 0.15em 0; break-inside: avoid; }
+.category-tree li.cat-group { margin-top: 0.4em; }
+.category-tree li.cat-group > a, .category-tree li.cat-group { font-weight: bold; }
+.category-tree li.cat-group li { font-weight: normal; }
+.category-tree li:not(.cat-group)::before { content: "▸ "; color: #a2a9b1; }
+.portal > summary:hover { color: #202122; }
 
 /* ---------- article ---------- */
 #content {
@@ -207,6 +233,7 @@ table.infobox .infobox-image img { max-width: 100%; }
   padding: 5px; margin-top: 1.5em; font-size: 95%;
 }
 #catlinks ul { display: inline; margin: 0; padding: 0; list-style: none; }
+#catlinks { color: #54595d; }
 #catlinks li { display: inline; margin: 0; padding: 0 0.5em; border-left: 1px solid #a2a9b1; }
 #catlinks li:first-child { border-left: 0; padding-left: 0.25em; }
 
@@ -275,4 +302,54 @@ html.toc-hidden body.has-toc #mw-content-text #toc { display: table; }
   table.infobox { float: none; width: 100%; margin: 0.5em 0; box-sizing: border-box; }
   figure.thumb { float: none; margin: 0.8em auto; width: auto; max-width: 320px; }
   table.wikitable { display: block; overflow-x: auto; }
+}
+
+/* ---------- graph view ---------- */
+#graph-toggle {
+  margin-left: auto; display: flex; align-items: center; gap: 6px;
+  background: #fff; border: 1px solid var(--line); border-radius: 2px;
+  padding: 6px 12px; cursor: pointer; color: #202122; font-size: 0.85em;
+}
+#graph-toggle:hover { background: var(--soft); }
+html.graph-open, html.graph-open body { overflow: hidden; }
+#graph-view {
+  position: fixed; inset: 0; z-index: 100; background: #fbfbfc;
+  display: flex; flex-direction: column;
+}
+#graph-view[hidden] { display: none; }
+#graph-view .gv-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 14px; background: #fff; border-bottom: 1px solid var(--line); font-size: 0.9em;
+}
+.gv-title { font-family: 'Linux Libertine', Georgia, serif; font-size: 1.25em; font-weight: normal; }
+.gv-search { flex: 0 1 260px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 2px; }
+.gv-local { color: #54595d; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.gv-bar button { background: #f8f9fa; border: 1px solid var(--line); border-radius: 2px; padding: 5px 10px; cursor: pointer; }
+.gv-bar button:hover { background: #fff; }
+.gv-close { margin-left: auto; font-size: 1.1em; line-height: 1; }
+.gv-legend {
+  position: absolute; top: 62px; left: 12px; z-index: 2;
+  display: flex; flex-direction: column; gap: 2px;
+  background: rgba(255,255,255,.92); border: 1px solid var(--soft); border-radius: 2px; padding: 6px;
+  font-size: 0.8em; max-height: calc(100% - 120px); overflow-y: auto;
+}
+.gv-legend button { display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 4px; cursor: pointer; text-align: left; color: #202122; }
+.gv-legend button:hover { background: var(--soft); }
+.gv-legend button.off { opacity: 0.35; text-decoration: line-through; }
+.gv-legend-head { font-weight: bold; color: #54595d !important; }
+.gv-legend.folded button[data-g] { display: none; }
+.gv-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+#graph-view canvas { flex: 1; width: 100%; min-height: 0; cursor: grab; touch-action: none; }
+.gv-tip {
+  position: absolute; pointer-events: none; z-index: 3;
+  background: #fff; border: 1px solid var(--line); box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  padding: 5px 8px; font-size: 0.8em; border-radius: 2px;
+}
+.gv-tip span { color: #54595d; }
+.gv-help { position: absolute; bottom: 8px; right: 12px; font-size: 0.75em; color: #72777d; }
+@media (max-width: 720px) {
+  #graph-toggle span { display: none; }
+  #graph-toggle { padding: 6px 8px; }
+  .gv-legend { top: auto; bottom: 30px; max-height: 30%; }
+  .gv-help { display: none; }
 }

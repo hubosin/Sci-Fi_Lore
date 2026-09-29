@@ -14,28 +14,30 @@
   var scrim = document.getElementById('nav-scrim');
   if (scrim) scrim.addEventListener('click', function () { document.body.classList.remove('nav-open'); });
 
-  // ---------- collapsible menu sections (remembered) ----------
-  var closed = {};
-  try { closed = JSON.parse(load('closed-portals') || '{}'); } catch (e) {}
-  document.querySelectorAll('details.portal').forEach(function (d) {
-    var id = d.getAttribute('data-portal');
-    if (closed[id]) d.removeAttribute('open');
+  // ---------- collapsible menu sections and sub-categories (remembered) ----------
+  var state = {};
+  try { state = JSON.parse(load('nav-state') || '{}'); } catch (e) {}
+  var here = location.pathname.split('/').pop() || 'index.html';
+  var restoring = true;
+  document.querySelectorAll('#mw-panel details[data-portal]').forEach(function (d) {
+    var id = (d.classList.contains('portal') ? 'p:' : 'g:') + d.getAttribute('data-portal');
+    if (id in state) { if (state[id]) d.setAttribute('open', ''); else d.removeAttribute('open'); }
     d.addEventListener('toggle', function () {
-      if (d.open) delete closed[id]; else closed[id] = 1;
-      save('closed-portals', JSON.stringify(closed));
+      if (restoring) return;
+      state[id] = d.open ? 1 : 0;
+      save('nav-state', JSON.stringify(state));
     });
-    // Clicking a linked section title opens the page, not the fold
-    var link = d.querySelector('summary a');
+    var link = d.querySelector(':scope > summary a');
     if (link) link.addEventListener('click', function (ev) { ev.stopPropagation(); });
   });
-  // Mark the current page in the menu and make sure its section is open
-  var here = location.pathname.split('/').pop() || 'index.html';
+  // Highlight the current page and open every group above it
   document.querySelectorAll('#mw-panel a').forEach(function (a) {
     if (a.getAttribute('href') === here) {
-      a.style.fontWeight = 'bold';
-      var d = a.closest('details'); if (d) d.setAttribute('open', '');
+      a.classList.add('current');
+      for (var d = a.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.setAttribute('open', '');
     }
   });
+  setTimeout(function () { restoring = false; }, 0);
 
   // ---------- contents column: hide/show + highlight current section ----------
   function setTocHidden(h) { root.classList.toggle('toc-hidden', h); save('toc-hidden', h ? '1' : '0'); }
