@@ -47,6 +47,71 @@ def mermaid_blocks(md_text):
                   md_text, flags=re.S)
 
 
+TREE_RE = re.compile(r"^```tree([^\n]*)\n(.*?)^```[ \t]*$", re.S | re.M)
+
+
+def _tree_person(text):
+    """'Name | detail' -> box contents."""
+    name, _, detail = text.partition(" | ")
+    out = f'<span class="t-name">{inline_md(name.strip())}</span>'
+    if detail.strip():
+        out += f'<span class="t-detail">{inline_md(detail.strip())}</span>'
+    return out
+
+
+def _tree_box(text):
+    # 'A + B' is a couple (family trees); links may contain '+', so only split on ' + '
+    parts = [p for p in re.split(r"\s\+\s", text) if p.strip()]
+    if len(parts) > 1:
+        boxes = '<span class="t-join" aria-hidden="true"></span>'.join(
+            f'<span class="t-box">{_tree_person(p)}</span>' for p in parts)
+        return f'<span class="t-couple">{boxes}</span>'
+    return f'<span class="t-box">{_tree_person(text)}</span>'
+
+
+def _tree_nodes(lines):
+    root = []
+    stack = [(-1, root)]
+    for ln in lines:
+        m = re.match(r"^(\s*)[-*]\s+(.*\S)\s*$", ln.replace("\t", "  "))
+        if not m:
+            continue
+        indent, node = len(m.group(1)), {"text": m.group(2), "kids": []}
+        while len(stack) > 1 and stack[-1][0] >= indent:
+            stack.pop()
+        stack[-1][1].append(node)
+        stack.append((indent, node["kids"]))
+    return root
+
+
+def _tree_ul(nodes):
+    items = []
+    for n in nodes:
+        kids = f"<ul>{_tree_ul(n['kids'])}</ul>" if n["kids"] else ""
+        items.append(f"<li>{_tree_box(n['text'])}{kids}</li>")
+    return "".join(items)
+
+
+def render_trees(md_text):
+    """```tree blocks: an indented list drawn as a tree.
+
+    Options after the word tree (any order):
+      right            draw left-to-right instead of top-down
+      family / tech / faction   colour style
+    Lines:  - Name | small detail text     - Parent A + Parent B (a couple)
+    """
+    def repl(m):
+        opts = m.group(1).lower().split()
+        direction = "right" if "right" in opts else "down"
+        kind = next((o for o in opts if o in ("family", "tech", "faction", "species")), "plain")
+        nodes = _tree_nodes(m.group(2).split("\n"))
+        if not nodes:
+            return ""
+        return (f'\n\n<div class="tree-wrap"><div class="tree tree-{direction} tree-{kind}">'
+                f'<ul>{_tree_ul(nodes)}</ul></div></div>\n\n')
+    return TREE_RE.sub(repl, md_text)
+
+
 def md_to_html(md_text):
     return markdown.markdown(
         md_text,
@@ -325,7 +390,7 @@ def main():
         rows, body_md = extract_infobox(src) if name != "Home" else (None, src)
         img, body_md = first_image(body_md) if rows else (None, body_md)
 
-        body = md_to_html(mermaid_blocks(fix_links(body_md))) + category_listing(name, portals)
+        body = md_to_html(mermaid_blocks(fix_links(render_trees(body_md)))) + category_listing(name, portals)
         body = re.sub(r"<table>", '<table class="wikitable">', body)
         body = thumbnails(body)
 
