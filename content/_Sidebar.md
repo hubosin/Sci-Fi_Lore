@@ -43,8 +43,7 @@
     * [Remnant-Human Alliance](Remnant-Human-Alliance)
     * [Opposition Bloc](Opposition-Bloc)
     * [The Survivors](The-Survivors)
-    * [H.A.S](H.A.S)
-  - [H.A.s](HAs)
+  - [H.A.S](HAs)
 * Alien
     * [The Conglomerate](The-Conglomerate)
 
