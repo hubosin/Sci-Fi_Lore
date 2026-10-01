@@ -1,4 +1,4 @@
-**Designation:** # (S37: marked on her right shoulder) · **Species:** Human · **Role:** [later-generation mech](Later-Generation-Mechs) pilot · **Timeline:** Canon / [RHV](Timeline-RHV)
+**Designation:** # (S37) · **Species:** Human · **Role:** [later-generation mech](Later-Generation-Mechs) pilot · **Timeline:** Canon / [RHV](Timeline-RHV)
 
 A child soldier with an extremely high affinity for piloting mechs, and one of the first successful pilots of the later-generation bio-tech mechs.
 
