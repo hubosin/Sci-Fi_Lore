@@ -6,23 +6,19 @@ The BRIDGE Project is the secret program that turned captured Conglomerate neura
 
 It began as **the Link Program**, a large-scale "underground" project run in secret by the **Soviet Union**. It became **BRIDGE** once the U.S. government joined and the two governments took it over together, **without the Remnants' knowledge**.
 
-- **BRIDGE** focused on building deadlier mechs.
-- **The Link Program** focused on finding pilots.
+* **BRIDGE** focused on building deadlier mechs.
+* **The Link Program** focused on finding pilots.
 
 Publicly, BRIDGE claimed to build prosthetics and mechs for restoration work. In reality it was developing weapons.
 
 ## History
 
-After the alliance captured Conglomerate technology, the Link Program set out to reverse-engineer the neural connection in Conglomerate mechs and ships. The first things it built were **prosthetics**.
-
-Its second-generation mech, [G2M01](BRIDGE-Mechs#lpg2-m01), went rogue the first time it was linked to a pilot and killed him. After that disaster, the governments took the program over and renamed it BRIDGE.
-
-The program later sorted its pilots into numbered [series](Pilot-Series), including the cloned [Series 3](Series-3-Clones). Its worst disaster was [BRIDGE-Fault](BRIDGE-Fault).
+After the alliance captured Conglomerate technology, the Link Program was created by the Soviet Union to reverse-engineer the neural connection controlling the majority of Conglomerate mechs and ships. The first things it built were **prosthetics** using there basic reverse engineered under standing of the technology.
 
 ## Related
 
-- [BRIDGE Mechs](BRIDGE-Mechs)
-- [Pilot Series](Pilot-Series)
-- [Series 3 Clones](Series-3-Clones)
-- [BRIDGE-Fault](BRIDGE-Fault)
-- [HAS](HAS)
+* [BRIDGE Mechs](BRIDGE-Mechs)
+* [Pilot Series](Pilot-Series)
+* [Series 3 Clones](Series-3-Clones)
+* [BRIDGE-Fault](BRIDGE-Fault)
+* [HAS](HAS)
