@@ -187,7 +187,7 @@
     var header = document.getElementById('site-header'), graphBtn = document.getElementById('graph-toggle');
     var canEdit = W.page && W.page !== 'search';
     var c = el('<div id="ed-controls">' +
-      (canEdit ? '<button type="button" class="ed-btn" id="ed-edit" title="Edit this page (E)">✎ <span>Edit</span></button>' : '') +
+      (canEdit ? '<button type="button" class="ed-btn" id="ed-edit" title="Edit this page">✎ <span>Edit</span></button>' : '') +
       '<button type="button" class="ed-btn" id="ed-new" title="Create a new page">＋ <span>New page</span></button>' +
       '<div class="ed-user"><button type="button" class="ed-btn ed-user-btn" aria-haspopup="true" title="Editor menu">' + esc(user || 'Editor') + ' ▾</button>' +
       '<div class="ed-menu" hidden>' +
@@ -209,11 +209,6 @@
       if (a === 'sidebar') openEditor('_Sidebar', { markdown: true, title: 'Menu (sidebar)' });
       if (a === 'footer') openEditor('_Footer', { markdown: true, title: 'Footer' });
       if (a === 'logout') logout();
-    });
-    document.addEventListener('keydown', function (e) {
-      if ((e.key === 'e' || e.key === 'E') && canEdit && !overlay && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.activeElement.isContentEditable && !(e.target.closest && e.target.closest('#ed-overlay, .ed-modal-back, [contenteditable]')) && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault(); openEditor(W.page);
-      }
     });
     document.documentElement.classList.add('is-editor');
     var ll = document.getElementById('editor-login-link');
