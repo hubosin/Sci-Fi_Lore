@@ -16,7 +16,7 @@ TAGLINE = "The Retrofuture Encyclopedia"
 REPO = "hubosin/Sci-Fi_Lore"
 BRANCH = "main"
 CONTENT_DIR = "content"   # folder in the repo that holds the pages
-AUTH_URL = ""   # "Log in with GitHub" helper (Cloudflare Worker address); leave empty to use tokens
+AUTH_URL = "https://sci-fi-lore-auth.jim617011.workers.dev"   # "Log in with GitHub" helper (Cloudflare Worker address); leave empty to use tokens
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
