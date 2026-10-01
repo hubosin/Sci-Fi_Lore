@@ -90,3 +90,9 @@ button:disabled { opacity: 0.6; cursor: default; }
   #ed-overlay .ed-summary { flex-basis: 100%; order: 5; }
   #ed-overlay .ed-help { display: none; }
 }
+
+.ed-gh-login {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px;
+  background: #24292f; color: #fff !important; border-radius: 4px; font-weight: bold; text-decoration: none !important;
+}
+.ed-gh-login:hover { background: #32383f; }

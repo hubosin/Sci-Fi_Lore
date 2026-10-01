@@ -16,6 +16,7 @@ TAGLINE = "The Retrofuture Encyclopedia"
 REPO = "hubosin/Sci-Fi_Lore"
 BRANCH = "main"
 CONTENT_DIR = "content"   # folder in the repo that holds the pages
+AUTH_URL = ""   # "Log in with GitHub" helper (Cloudflare Worker address); leave empty to use tokens
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -379,7 +380,7 @@ def last_edited(wiki_dir, filename):
 
 def render(template, **kw):
     owner, repo = REPO.split("/")
-    conf = {"page": kw.get("PAGE", ""), "owner": owner, "repo": repo, "branch": BRANCH, "dir": CONTENT_DIR}
+    conf = {"page": kw.get("PAGE", ""), "owner": owner, "repo": repo, "branch": BRANCH, "dir": CONTENT_DIR, "auth": AUTH_URL}
     template = template.replace("{{WIKICONF}}", json.dumps(conf))
     for k, v in kw.items():
         template = template.replace("{{" + k + "}}", v)

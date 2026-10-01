@@ -190,7 +190,7 @@ function toggleToc() {
   }
   var hasToken = false;
   try { hasToken = !!localStorage.getItem('wiki-editor-token'); } catch (e) {}
-  if (hasToken) loadEditor();
+  if (hasToken || /^#wiki-auth/.test(location.hash)) loadEditor();
   var link = document.getElementById('editor-login-link');
   if (link) {
     if (hasToken) link.parentNode.style.display = 'none';

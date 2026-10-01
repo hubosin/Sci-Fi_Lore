@@ -6,6 +6,8 @@
   var W = window.WIKI || {};
   var API = 'https://api.github.com';
   var TOKEN_KEY = 'wiki-editor-token', USER_KEY = 'wiki-editor-user';
+  var REFRESH_KEY = 'wiki-editor-refresh', EXP_KEY = 'wiki-editor-expires';
+  var AUTH = (W.auth || '').replace(/\/+$/, '');   // the "Log in with GitHub" helper, if set up
   var token = null, user = null, editor = null, overlay = null;
   var RAW = 'https://raw.githubusercontent.com/' + W.owner + '/' + W.repo + '/' + W.branch + '/' + W.dir + '/';
 
@@ -14,7 +16,31 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   // ---------- GitHub API ----------
-  function gh(path, opts) {
+  // Logins from the GitHub App last 8 hours; renew them quietly before they run out.
+  var refreshing = null;
+  function renew() {
+    var rt = load(REFRESH_KEY);
+    if (!AUTH || !rt) return Promise.reject(new Error('Your login has expired. Please log in again.'));
+    if (!refreshing) {
+      refreshing = fetch(AUTH + '/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt }) })
+        .then(function (r) { return r.json().then(function (d) { if (!r.ok || !d.t) throw new Error('Your login has expired. Please log in again.'); return d; }); })
+        .then(function (d) { token = d.t; save(TOKEN_KEY, d.t); save(REFRESH_KEY, d.r || rt); save(EXP_KEY, d.e ? String(d.e) : null); })
+        .finally(function () { refreshing = null; });
+    }
+    return refreshing;
+  }
+  function ensureFresh() {
+    var exp = +(load(EXP_KEY) || 0);
+    if (exp && exp - Date.now() < 5 * 60 * 1000 && load(REFRESH_KEY)) return renew();
+    return Promise.resolve();
+  }
+  function gh(path, opts, retried) {
+    return ensureFresh().then(function () { return ghNow(path, opts); }).catch(function (e) {
+      if (e.status === 401 && !retried && load(REFRESH_KEY)) return renew().then(function () { return gh(path, opts, true); });
+      throw e;
+    });
+  }
+  function ghNow(path, opts) {
     opts = opts || {};
     var headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
     if (token) headers.Authorization = 'Bearer ' + token;
@@ -84,6 +110,17 @@
 
   // ---------- login ----------
   function loginDialog() {
+    if (AUTH) {
+      var back = location.href.split('#')[0];
+      modal('Editor login',
+        '<p>Editing is limited to wiki moderators (people added as collaborators on the GitHub repo).</p>' +
+        '<p><a class="ed-gh-login" href="' + esc(AUTH + '/login?return=' + encodeURIComponent(back)) + '">' +
+        '<svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>' +
+        ' Log in with GitHub</a></p>' +
+        '<p class="ed-muted">The first time, GitHub asks you to authorize the wiki editor. Click <b>Authorize</b> and you’ll come straight back here.</p>',
+        [{ label: 'Cancel', onclick: function (m) { m.remove(); } }]);
+      return;
+    }
     var url = 'https://github.com/settings/tokens/new?scopes=public_repo&description=' + encodeURIComponent('Sci-Fi Lore wiki editor');
     modal('Editor login',
       '<p>Editing is limited to wiki moderators (people added as collaborators on the GitHub repo).</p>' +
@@ -100,7 +137,7 @@
             .catch(function (e) { err.textContent = e.message; err.hidden = false; busy(btn, false, 'Log in'); });
         } }]);
   }
-  function verify(t) {
+  function verify(t, extra) {
     token = t;
     return gh('/user').then(function (u) {
       user = u.login;
@@ -108,13 +145,38 @@
     }).then(function (r) {
       if (!r.permissions || !r.permissions.push) throw new Error('Your GitHub account (' + user + ') does not have edit access to this wiki. Ask the owner to add you as a collaborator.');
       save(TOKEN_KEY, t); save(USER_KEY, user);
+      save(REFRESH_KEY, extra && extra.r ? extra.r : null);
+      save(EXP_KEY, extra && extra.e ? String(extra.e) : null);
     }).catch(function (e) {
       token = null; user = null;
       if (e.status === 401) e.message = 'That token was not accepted. Check you copied all of it, and that it hasn’t expired.';
       throw e;
     });
   }
-  function logout() { save(TOKEN_KEY, null); save(USER_KEY, null); location.reload(); }
+  function logout() { [TOKEN_KEY, USER_KEY, REFRESH_KEY, EXP_KEY].forEach(function (k) { save(k, null); }); location.reload(); }
+
+  // Coming back from GitHub: the login arrives in the address bar after "#wiki-auth="
+  function finishGitHubLogin() {
+    var h = location.hash;
+    if (h.indexOf('#wiki-auth-error=') === 0) {
+      history.replaceState(null, '', location.pathname + location.search);
+      toast('GitHub login was cancelled or failed: ' + esc(decodeURIComponent(h.slice(17))), 'err');
+      return true;
+    }
+    if (h.indexOf('#wiki-auth=') !== 0) return false;
+    history.replaceState(null, '', location.pathname + location.search);
+    var data;
+    try {
+      var s = h.slice(11).replace(/-/g, '+').replace(/_/g, '/');
+      data = JSON.parse(b64decode(s + '==='.slice((s.length + 3) % 4)));
+    } catch (e) { toast('Login failed. Please try again.', 'err'); return true; }
+    toast('Logging in…', '', true);
+    verify(data.t, data).then(function () {
+      toast('Logged in as <b>' + esc(user) + '</b>. You can now edit pages.', 'ok');
+      installUI();
+    }).catch(function (e) { toast(esc(e.message), 'err', true); });
+    return true;
+  }
 
   // ---------- header controls for logged-in editors ----------
   function installUI() {
@@ -494,6 +556,8 @@
     var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'editor.css'; document.head.appendChild(css);
   }
   window.WikiEditor = { login: loginDialog };
-  var saved = load(TOKEN_KEY);
-  if (saved) { token = saved; user = load(USER_KEY); installUI(); }
+  if (!finishGitHubLogin()) {
+    var saved = load(TOKEN_KEY);
+    if (saved) { token = saved; user = load(USER_KEY); installUI(); }
+  }
 })();
