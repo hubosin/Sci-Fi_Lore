@@ -179,3 +179,21 @@ function toggleToc() {
   if (a) a.textContent = toc.classList.contains('collapsed') ? 'show' : 'hide';
   return false;
 }
+
+// Editors: load the in-page editor if this browser is logged in, or when "Editor login" is clicked
+(function () {
+  function loadEditor(cb) {
+    if (window.WikiEditor) return cb && cb();
+    var s = document.createElement('script'); s.src = 'editor.js';
+    s.onload = function () { cb && cb(); };
+    document.body.appendChild(s);
+  }
+  var hasToken = false;
+  try { hasToken = !!localStorage.getItem('wiki-editor-token'); } catch (e) {}
+  if (hasToken) loadEditor();
+  var link = document.getElementById('editor-login-link');
+  if (link) {
+    if (hasToken) link.parentNode.style.display = 'none';
+    link.addEventListener('click', function (e) { e.preventDefault(); loadEditor(function () { window.WikiEditor.login(); }); });
+  }
+})();

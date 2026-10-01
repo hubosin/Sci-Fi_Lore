@@ -1,14 +1,12 @@
 name: Publish wiki site
 
-# Rebuilds the encyclopedia website from the GitHub wiki.
+# Rebuilds the encyclopedia website whenever a page (content/) or the site
+# builder (site/) changes, including saves from the in-page editor.
 on:
-  gollum:              # a wiki page was created or edited on github.com
-  workflow_dispatch:   # "Run workflow" button on the Actions tab
-  schedule:
-    - cron: "17 */3 * * *"   # every 3 hours, catches wiki pushes from GitHub Desktop
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/publish-wiki-site.yml"]
+    paths: ["content/**", "site/**", ".github/workflows/publish-wiki-site.yml"]
+  workflow_dispatch:   # "Run workflow" button on the Actions tab
 
 permissions:
   contents: read
@@ -23,11 +21,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out site builder
-        uses: actions/checkout@v4
-
-      - name: Check out wiki
-        run: git clone "https://github.com/${{ github.repository }}.wiki.git" wiki
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, for "last edited" dates
 
       - uses: actions/setup-python@v5
         with:
@@ -36,7 +32,7 @@ jobs:
       - name: Build
         run: |
           pip install markdown
-          python site/build.py --wiki wiki --out _site
+          python site/build.py --wiki content --out _site
 
       - uses: actions/upload-pages-artifact@v3
         with:

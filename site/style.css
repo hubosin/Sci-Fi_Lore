@@ -422,3 +422,6 @@ html.graph-open, html.graph-open body { overflow: hidden; }
   content: ""; position: absolute; left: 0; top: 50%; width: 20px; border-top: 1px solid var(--t-line);
 }
 .tree-right .t-box { align-items: flex-start; text-align: left; }
+
+.editor-login { font-size: 0.9em; }
+.editor-login a { color: #72777d; }

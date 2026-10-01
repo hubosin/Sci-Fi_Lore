@@ -14,6 +14,8 @@ import markdown
 SITE_NAME = "Sci-Fi Lore"
 TAGLINE = "The Retrofuture Encyclopedia"
 REPO = "hubosin/Sci-Fi_Lore"
+BRANCH = "main"
+CONTENT_DIR = "content"   # folder in the repo that holds the pages
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -110,6 +112,39 @@ def render_trees(md_text):
         return (f'\n\n<div class="tree-wrap"><div class="tree tree-{direction} tree-{kind}">'
                 f'<ul>{_tree_ul(nodes)}</ul></div></div>\n\n')
     return TREE_RE.sub(repl, md_text)
+
+
+def normalize_markdown(md_text):
+    """Make hand-written and editor-written Markdown render the same way.
+
+    * Nested bullets: people indent by 2 spaces, the editor by 4. Re-indent every
+      list so each level is 4 spaces (what the Markdown renderer expects).
+    * Undo escapes the visual editor adds that this renderer doesn't know (\~).
+    """
+    out, stack, in_code = [], [], False
+    for ln in md_text.split("\n"):
+        if re.match(r"^\s*(```|~~~)", ln):
+            in_code = not in_code
+            out.append(ln); stack = []
+            continue
+        if in_code:
+            out.append(ln); continue
+        m = re.match(r"^(\s*)([-*+]|\d+[.)])(\s+.*)$", ln)
+        if m:
+            indent = len(m.group(1).replace("\t", "    "))
+            while stack and stack[-1] > indent:
+                stack.pop()
+            if not stack or stack[-1] < indent:
+                stack.append(indent)
+            level = len(stack) - 1
+            ln = "    " * level + m.group(2) + m.group(3)
+        elif ln.strip() == "":
+            pass
+        elif not ln.startswith(" "):
+            stack = []
+        ln = ln.replace("\\~", "~")
+        out.append(ln)
+    return "\n".join(out)
 
 
 def md_to_html(md_text):
@@ -343,6 +378,9 @@ def last_edited(wiki_dir, filename):
 
 
 def render(template, **kw):
+    owner, repo = REPO.split("/")
+    conf = {"page": kw.get("PAGE", ""), "owner": owner, "repo": repo, "branch": BRANCH, "dir": CONTENT_DIR}
+    template = template.replace("{{WIKICONF}}", json.dumps(conf))
     for k, v in kw.items():
         template = template.replace("{{" + k + "}}", v)
     return template
@@ -357,8 +395,9 @@ def main():
     if os.path.exists(a.out):
         shutil.rmtree(a.out)
     os.makedirs(a.out)
-    for f in ("style.css", "wiki.js", "graph.js", "logo.svg"):
+    for f in ("style.css", "wiki.js", "graph.js", "editor.js", "editor.css", "logo.svg"):
         shutil.copy(os.path.join(HERE, f), a.out)
+    shutil.copytree(os.path.join(HERE, "vendor"), os.path.join(a.out, "vendor"))
     if os.path.isdir(os.path.join(a.wiki, "images")):
         shutil.copytree(os.path.join(a.wiki, "images"), os.path.join(a.out, "images"))
     template = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
@@ -387,6 +426,7 @@ def main():
             if t != name:
                 graph_links.append((name, t))
         title = title_of(name)
+        src = normalize_markdown(src)
         rows, body_md = extract_infobox(src) if name != "Home" else (None, src)
         img, body_md = first_image(body_md) if rows else (None, body_md)
 

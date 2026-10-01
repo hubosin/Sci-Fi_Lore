@@ -1,0 +1,92 @@
+/* Editor overlay and dialogs (loaded only for logged-in editors) */
+html.ed-open, html.ed-open body { overflow: hidden; }
+#ed-overlay {
+  position: fixed; inset: 0; z-index: 200; background: #fff;
+  display: flex; flex-direction: column; font-family: sans-serif;
+}
+#ed-overlay .ed-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 14px; border-bottom: 1px solid #a2a9b1; background: #f8f9fa;
+}
+#ed-overlay .ed-title { font-family: 'Linux Libertine', Georgia, serif; font-size: 1.25em; margin-right: auto; }
+#ed-overlay .ed-title span { color: #54595d; font-size: 0.8em; }
+#ed-overlay .ed-summary { flex: 0 1 320px; padding: 6px 8px; border: 1px solid #a2a9b1; border-radius: 2px; }
+#ed-overlay .ed-note { padding: 6px 14px; background: #fef6e7; border-bottom: 1px solid #fc3; font-size: 0.85em; }
+#ed-overlay .ed-help { padding: 5px 14px; font-size: 0.78em; color: #54595d; border-bottom: 1px solid #eaecf0; }
+#ed-overlay .ed-root { flex: 1; min-height: 0; }
+#ed-overlay .toastui-editor-defaultUI { border: 0; border-radius: 0; }
+#ed-overlay .toastui-editor-contents { font-size: 15px; }
+#ed-overlay .toastui-editor-toolbar button.ed-tool, .ed-tool {
+  width: auto; background: none; border: 1px solid transparent; border-radius: 3px; cursor: pointer;
+  font-size: 12px; padding: 0 7px; height: 32px; margin: 0 2px; color: #333; white-space: nowrap;
+}
+.ed-tool:hover { background: #fff; border-color: #ccc; }
+
+.ed-bar button, .ed-modal-buttons button, .ed-btn {
+  background: #f8f9fa; border: 1px solid #a2a9b1; border-radius: 2px; padding: 6px 12px;
+  cursor: pointer; font-size: 0.9em; color: #202122;
+}
+.ed-bar button:hover, .ed-modal-buttons button:hover, .ed-btn:hover { background: #fff; }
+button.primary { background: #36c !important; border-color: #36c !important; color: #fff !important; font-weight: bold; }
+button.primary:hover { background: #447ff5 !important; }
+button.danger { color: #d33 !important; border-color: #d33 !important; background: #fff !important; }
+button.danger:hover { background: #fee7e6 !important; }
+button:disabled { opacity: 0.6; cursor: default; }
+
+/* header controls */
+#ed-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+#ed-controls + #graph-toggle { margin-left: 6px; }
+.ed-user { position: relative; }
+.ed-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 50; min-width: 200px;
+  background: #fff; border: 1px solid #a2a9b1; box-shadow: 0 2px 8px rgba(0,0,0,.15); padding: 4px 0;
+}
+.ed-menu button, .ed-menu a {
+  display: block; width: 100%; text-align: left; background: none; border: 0; padding: 7px 12px;
+  font-size: 0.85em; color: #202122; cursor: pointer; box-sizing: border-box;
+}
+.ed-menu button:hover, .ed-menu a:hover { background: #eaf3ff; text-decoration: none; }
+
+/* dialogs */
+.ed-modal-back {
+  position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.35);
+  display: flex; align-items: flex-start; justify-content: center; padding: 8vh 12px;
+}
+.ed-modal {
+  background: #fff; border: 1px solid #a2a9b1; box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  width: 100%; max-width: 520px; padding: 18px 20px; box-sizing: border-box; font-size: 0.92em;
+  max-height: 84vh; overflow-y: auto;
+}
+.ed-modal h2 { font-family: 'Linux Libertine', Georgia, serif; font-weight: normal; font-size: 1.4em; margin: 0 0 10px; border-bottom: 1px solid #a2a9b1; }
+.ed-modal label { display: block; margin: 10px 0; }
+.ed-modal input[type=text], .ed-modal input[type=password], .ed-modal input[type=search], .ed-modal select {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 4px; padding: 7px 8px;
+  border: 1px solid #a2a9b1; border-radius: 2px; font-size: 1em;
+}
+.ed-modal ol { padding-left: 1.3em; }
+.ed-modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.ed-error { color: #d33; }
+.ed-muted { color: #54595d; font-size: 0.9em; }
+.ed-plist { max-height: 300px; overflow-y: auto; border: 1px solid #eaecf0; margin-top: 6px; }
+.ed-plist button { display: block; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid #eaecf0; padding: 6px 10px; cursor: pointer; color: #0645ad; }
+.ed-plist button:hover { background: #eaf3ff; }
+
+/* status toast */
+#ed-toast {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 400;
+  background: #202122; color: #fff; padding: 10px 16px; border-radius: 3px; font-size: 0.9em;
+  box-shadow: 0 2px 10px rgba(0,0,0,.3); max-width: 90vw;
+}
+#ed-toast.ok { background: #14866d; }
+#ed-toast.err { background: #d33; }
+#ed-toast a { color: #fff; text-decoration: underline; font-weight: bold; }
+.ed-spin { display: inline-block; width: 10px; height: 10px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: edspin 0.8s linear infinite; vertical-align: -1px; }
+@keyframes edspin { to { transform: rotate(360deg); } }
+
+@media (max-width: 720px) {
+  #ed-controls .ed-btn span, .ed-user-btn { font-size: 0; }
+  .ed-user-btn::before { content: "☰"; font-size: 14px; }
+  #ed-controls .ed-btn { padding: 6px 8px; }
+  #ed-overlay .ed-summary { flex-basis: 100%; order: 5; }
+  #ed-overlay .ed-help { display: none; }
+}
