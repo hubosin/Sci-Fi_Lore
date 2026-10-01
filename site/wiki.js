@@ -139,7 +139,10 @@
       if (!box.contains(ev.target) && ev.target !== input) box.style.display = 'none';
     });
     document.addEventListener('keydown', function (ev) {
-      if (ev.key === '/' && document.activeElement !== input && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
+      var el = ev.target && ev.target.nodeType === 1 ? ev.target : document.activeElement;
+      var typing = !!el && (/INPUT|TEXTAREA|SELECT/.test(el.tagName) || el.isContentEditable ||
+        !!(el.closest && el.closest('#ed-overlay, .ed-modal-back, [contenteditable]')));
+      if (ev.key === '/' && !typing && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
         ev.preventDefault(); input.focus();
       }
     });

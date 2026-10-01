@@ -211,7 +211,7 @@
       if (a === 'logout') logout();
     });
     document.addEventListener('keydown', function (e) {
-      if ((e.key === 'e' || e.key === 'E') && canEdit && !overlay && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.activeElement.isContentEditable && !e.ctrlKey && !e.metaKey) {
+      if ((e.key === 'e' || e.key === 'E') && canEdit && !overlay && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.activeElement.isContentEditable && !(e.target.closest && e.target.closest('#ed-overlay, .ed-modal-back, [contenteditable]')) && !e.ctrlKey && !e.metaKey) {
         e.preventDefault(); openEditor(W.page);
       }
     });

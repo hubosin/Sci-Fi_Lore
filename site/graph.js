@@ -372,8 +372,13 @@
   }
 
   // Open with the header button or the G key
+  function isTyping(e) {
+    var el = e.target && e.target.nodeType === 1 ? e.target : document.activeElement;
+    return !!el && (/INPUT|TEXTAREA|SELECT/.test(el.tagName) || el.isContentEditable ||
+      !!(el.closest && el.closest('#ed-overlay, .ed-modal-back, [contenteditable]')));
+  }
   document.addEventListener('keydown', function (e) {
-    if ((e.key === 'g' || e.key === 'G') && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if ((e.key === 'g' || e.key === 'G') && !isTyping(e) && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault(); window.toggleGraph();
     }
   });
