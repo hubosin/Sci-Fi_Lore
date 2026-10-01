@@ -19,12 +19,11 @@
 - [The Outbreak](The-Outbreak)
 
 **[Species](Species)**
-- Earth
-  - [Humanity](Humanity)
-- Remnant
+- sentient
   - [The Remnants](The-Remnants)
-- Conglomerate species
-  - [Conglomerate Species A](Conglomerate-Species-A)
+  - [Humanity](Humanity)
+    - Conglomerate species
+      - [Conglomerate Species A](Conglomerate-Species-A)
 - Virulon
   - [The Virulon](The-Virulon)
   - [Resonant Virulon](Resonant-Virulon)
@@ -53,7 +52,6 @@
   - [Earth](Earth)
     - [The Ring](The-Ring)
     - [Northern Facility City](Northern-Facility-City)
-    - [Alaska & Russian Far East](Alaska-and-the-Russian-Far-East)
   - [Jupiter](Jupiter)
   - [Mars](Mars)
 - Beyond the solar system
