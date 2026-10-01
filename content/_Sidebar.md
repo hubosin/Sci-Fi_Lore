@@ -19,6 +19,7 @@
 * [Second Industrial Age](Second-Industrial-Age)
 * [Conglomerate War](Conglomerate-War)
 * [The Outbreak](The-Outbreak)
+* [BRIDGE-Fault](BRIDGE-fault)
 
 
 **[Species](Species)**
@@ -42,6 +43,7 @@
     * [Remnant-Human Alliance](Remnant-Human-Alliance)
     * [Opposition Bloc](Opposition-Bloc)
     * [The Survivors](The-Survivors)
+    * [H.A.S](H.A.S)
 * Alien
     * [The Conglomerate](The-Conglomerate)
 
