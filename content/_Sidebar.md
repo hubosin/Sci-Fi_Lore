@@ -44,6 +44,7 @@
     * [Opposition Bloc](Opposition-Bloc)
     * [The Survivors](The-Survivors)
     * [H.A.S](H.A.S)
+  - [H.A.s](HAs)
 * Alien
     * [The Conglomerate](The-Conglomerate)
 
