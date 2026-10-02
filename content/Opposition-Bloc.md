@@ -15,6 +15,8 @@ Opposition to the alliance takes several forms:
 - **Distrusters:** believe the Remnants are real but manipulating humanity to get its weapons technology
 - **Conglomerate sympathisers:** a group that grows late in the war as humanity learns what the Conglomerate is fighting and where humanity stands in the grand scheme of things
 
+Many of these groups later fed into [HAS](HAS).
+
 ## Key events
 
 - **January 7–9, 1985:** humanity splits over the treaty

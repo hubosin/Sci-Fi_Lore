@@ -2,6 +2,10 @@
 
 Humanoid, bio-organic mechs neural-linked to a single pilot. Late-war designs use bio-technology **stolen from the Conglomerate**.
 
+## Origin
+
+Later-generation mechs came out of the secret [BRIDGE Project](BRIDGE-Project), which reverse-engineered the neural link in captured Conglomerate mechs and ships. Its prototypes are listed on [BRIDGE Mechs](BRIDGE-Mechs). **Generation 4** was the first to enter service.
+
 ## Design
 
 - **Organic or organic-integrated** construction
@@ -10,11 +14,11 @@ Humanoid, bio-organic mechs neural-linked to a single pilot. Late-war designs us
 
 ## Pilots
 
-Each mech has **one pilot**, who needs specific genes and is synced to a specific machine. Candidates are chosen for **affinity**, and some are raised for the role from childhood. [Nova](Nova) was one of the first successful pilots.
+Each mech has **one pilot**, who needs specific genes and is synced to a specific machine. Candidates are chosen for **[aptitude](Pilot-Series#aptitude)**: young, elastic minds link best. Pilots came from paid test subjects, engineered [clones](Series-3-Clones) raised for the role from childhood, and later aptitude-tested volunteers. See [Pilot Series](Pilot-Series). [Nova](Nova) was one of the first successful pilots.
 
 ## Neural-link implants
 
-Pilots receive surgically implanted **metal ports** in the lower neck and upper back.
+Pilots receive surgically implanted **metal ports** in the lower neck and upper back, and for the most capable pilots the back of the head. The procedure was developed by [the Doctor](The-Doctor) from [the Engineer](The-Engineer)'s original direct-link design.
 
 ## Boarding sequence
 

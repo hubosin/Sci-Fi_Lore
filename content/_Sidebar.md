@@ -19,7 +19,10 @@
 * [Second Industrial Age](Second-Industrial-Age)
 * [Conglomerate War](Conglomerate-War)
 * [The Outbreak](The-Outbreak)
-- [BRIDGE Project](BRIDGE-Project)
+* [BRIDGE Project](BRIDGE-Project)
+    * [Pilot Series](Pilot-Series)
+    * [Series 3 Clones](Series-3-Clones)
+    * [BRIDGE-Fault](BRIDGE-Fault)
 
 
 **[Species](Species)**
@@ -43,7 +46,7 @@
     * [Remnant-Human Alliance](Remnant-Human-Alliance)
     * [Opposition Bloc](Opposition-Bloc)
     * [The Survivors](The-Survivors)
-  - [H.A.S](HAS)
+    * [H.A.S](HAS)
 * Alien
     * [The Conglomerate](The-Conglomerate)
 
@@ -52,6 +55,21 @@
 * Humans
     * [Nova](Nova)
     * [The Ribbon](The-Ribbon)
+    * Series 3 clones
+        * [Adam](Adam)
+        * [Rose](Rose)
+        * [Neil](Neil)
+        * [Samantha](Samantha)
+        * [Olivia](Olivia)
+        * [Dean](Dean)
+        * [Mila](Mila)
+        * [Daniel](Daniel)
+    * BRIDGE staff
+        * [Lana Morozov](Lana-Morozov)
+        * [Nina Lera](Nina-Lera)
+        * [The Engineer](The-Engineer)
+        * [The Assistant](The-Assistant)
+        * [The Doctor](The-Doctor)
 * Remnants
     * [Remnant Monarch](Remnant-Monarch)
 
@@ -73,6 +91,7 @@
 * [Mechs](Mechs)
     * [First-Generation](First-Generation-Mechs)
     * [Later-Generation](Later-Generation-Mechs)
+    * [BRIDGE Mechs](BRIDGE-Mechs)
     * [Remnant Shells](Remnant-Shells)
 * Travel
     * [FTL](FTL)

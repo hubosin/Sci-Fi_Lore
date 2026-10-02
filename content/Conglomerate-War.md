@@ -10,6 +10,7 @@ The Remnants warned humanity about the Conglomerate from the moment of [First Co
 * **The Conglomerate's approach:** it invaded to win outright, as it had against the Remnants. Once the invasion began it realised how far joint Remnant-Human technology had come.
 * **Waves of attack:** the second Conglomerate attack destroyed most of Earth's forests. In response, the alliance supercharged [RHHMs](RHHM) in habitable areas to grow dense forest cover, hiding smaller weapons and ambushing enemy forces.
 * **Mechs:** [first-generation mechs](First-Generation-Mechs) carried the fighting, and most first-generation pilots died. Late in the war, bio-tech **stolen from the Conglomerate** produced the first [later-generation](Later-Generation-Mechs) neural-linked mechs. Nova was one of their first successful pilots.
+* **BRIDGE:** in secret, the U.S. and USSR ran the [BRIDGE Project](BRIDGE-Project) to turn captured Conglomerate tech into neural-linked mechs, testing on paid volunteers and engineered clones.
 * **Air war:** Earth's air forces beat Conglomerate ground forces on several occasions, notably in [Alaska and the Russian Far East](Alaska-and-the-Russian-Far-East).
 * **Home front:** as the war dragged on, some humans came to sympathise with the Conglomerate's goals.
 
@@ -29,3 +30,4 @@ The alliance proved strong enough that continuing to fight was a detour the Cong
 
 * [Nova](Nova)
 * [The Ribbon](The-Ribbon)
+* The [Series 3 clones](Series-3-Clones) of the [BRIDGE Project](BRIDGE-Project)

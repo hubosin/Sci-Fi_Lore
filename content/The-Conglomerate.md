@@ -8,6 +8,12 @@ The Conglomerate moves from planet to planet gathering resources. It **prioritis
 
 It began by allying with the species whose resources it took, absorbing them as members. As time ran short, and as it met species that fought back or weren't advanced enough to join, it started to **kill and take** instead. A species it judges unfit is exterminated and its world strip-mined. That is what happened to [the Remnants](The-Remnants).
 
+### Choosing targets
+
+When the Conglomerate drops forces on a planet it targets the most **densely populated areas in terms of life**, not intelligent life. That is why most of its attacks on Earth struck **forests**: they hold huge numbers of organisms. It would rather **take** than attack. If it finds no intelligent life when it lands, it simply takes what it needs.
+
+### Abandoning troops
+
 When a world pushes back hard, the Conglomerate usually **abandons** the troops it has on the ground rather than spend resources retrieving them or risk infiltration or infection.
 
 ## Technology

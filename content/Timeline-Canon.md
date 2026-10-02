@@ -46,5 +46,11 @@ See [The Conglomerate War](Conglomerate-War).
 - A team observing through a [solar gravitational lens](Solar-Gravitational-Lens) confirms the Conglomerate fleet is heading for Earth
 - The war begins and lasts well over a decade
 - The second Conglomerate attack destroys most of Earth's forests. The alliance begins supercharging RHHMs to grow cover
+- After the alliance captures Conglomerate technology, Soviet scientists start the Link Program to reverse-engineer its neural link. See [BRIDGE Project](BRIDGE-Project)
+- The [G2M01](BRIDGE-Mechs#lpg2-m01) incident kills the Engineer. The U.S. and Soviet governments take over the program as **BRIDGE**
+- [Series 2](Pilot-Series#series-2) testing: tens of thousands of paid subjects, more than half of whom die. The disappearances draw [HAS](HAS) to BRIDGE
+- The [Series 3 clones](Series-3-Clones) are born (S31–S39), among them [Nova](Nova)
+- [BRIDGE-Fault](BRIDGE-Fault): Nina Lera hijacks the repaired G2M01; Daniel (S39) dies and Series 3 ends
+- [Series 4](Pilot-Series#series-4): aptitude-tested volunteers; becoming a pilot is now popular
 - Late in the war, bio-tech from the Conglomerate is integrated into the first [later-generation mechs](Later-Generation-Mechs)
 - The Conglomerate proposes a compromise. **The timeline branches:** [RHV](Timeline-RHV) · [EACO](Timeline-EACO) · [Red Line](Timeline-Red-Line)

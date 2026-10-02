@@ -6,6 +6,10 @@ The hereditary head of the Remnant royal family.
 
 The Remnants are a crowned republic, so the monarch holds little to no real power. The monarch is a **symbol and representative** of the species. The Remnants have a long history of well-intentioned monarchs, and the royal family is widely respected.
 
+## Royal family
+
+A **Remnant prince** appears in *Embers in a Dead Flame*, possibly as part of the crew of a returning first-generation pilot. In one version the royal family helped a fallen pilot build the mech their child later uses. See [Stories](Stories#embers-in-a-dead-flame).
+
 ## History
 
 - One of the **priority evacuees** when the homeworld fell
