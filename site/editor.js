@@ -270,7 +270,8 @@
         '<input type="text" class="ed-summary" placeholder="Summary of your change (optional)" maxlength="120">' +
         '<button type="button" class="ed-cancel">Cancel</button>' +
         '<button type="button" class="ed-save primary">' + (opts.isNew ? 'Create page' : 'Save') + '</button>' +
-        (opts.isNew || /^_/.test(page) || page === 'Home' ? '' : '<button type="button" class="ed-delete danger" title="Delete this page">Delete</button>') +
+        (opts.isNew || /^_/.test(page) || page === 'Home' ? '' : '<button type="button" class="ed-rename" title="Change this page’s name">Rename</button>' +
+          '<button type="button" class="ed-delete danger" title="Delete this page">Delete</button>') +
       '</div>' +
       (hasHtml && !opts.markdown ? '<div class="ed-note">This page contains HTML (like sized images), so it opened in <b>Markdown</b> mode to keep it intact. You can switch to WYSIWYG at the bottom right, but HTML may be lost.</div>' : '') +
       '<div class="ed-help">Tips: <b>Page link</b> links to another wiki page · <b>Infobox</b> adds the facts box · <b>Tree</b> inserts a family/tech tree · drag images straight into the editor.</div>' +
@@ -309,6 +310,8 @@
     overlay.querySelector('.ed-save').onclick = function (e) { saveEdit(page, title, file, opts, e.target); };
     var del = overlay.querySelector('.ed-delete');
     if (del) del.onclick = function () { deleteDialog(page, title, file); };
+    var ren = overlay.querySelector('.ed-rename');
+    if (ren) ren.onclick = function () { renameDialog(page, title, file); };
     overlay.addEventListener('keydown', function (e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); overlay.querySelector('.ed-save').click(); }
     });
@@ -519,6 +522,115 @@
         var t = targets.filter(function (x) { return x.label === opts.target.label; })[0] || opts.target;
         var updated = insertIntoSidebar(sb.text, t, '[' + title + '](' + slug + ')');
         return putFile('_Sidebar.md', updated, sb.sha, 'Add ' + title + ' to the menu (by ' + user + ' via site editor)');
+      });
+    });
+  }
+
+  // ---------- rename ----------
+  // Moves the page to its new name, points every link (pages, menu, footer) at it and leaves a
+  // forwarding note so old links and bookmarks still work. All of it lands as ONE commit.
+  function reEsc(x) { return x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function retarget(md, from, to, fromTitle, toTitle) {
+    var re = new RegExp('(?<!!)\\[((?:[^\\[\\]]|\\[[^\\]]*\\])*)\\]\\(' + reEsc(from) + '(#[^)\\s]*)?\\)', 'g');
+    return md.replace(re, function (all, text, anchor) {
+      if (text.trim().toLowerCase() === fromTitle.toLowerCase()) text = toTitle;
+      return '[' + text + '](' + to + (anchor || '') + ')';
+    });
+  }
+  function parseRedirects(text) {
+    var out = [];
+    (text || '').split('\n').forEach(function (ln) {
+      var m = ln.match(/^\s*([\w\-]+)\s*->\s*([\w\-]+)\s*$/);
+      if (m) out.push([m[1], m[2]]);
+    });
+    return out;
+  }
+  function renameDialog(page, title, file) {
+    var m = modal('Rename “' + title + '”',
+      '<label>New page title <input type="text" class="ed-rtitle" value="' + esc(title) + '"></label>' +
+      '<p class="ed-muted ed-rslug"></p>' +
+      '<label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" class="ed-rlinks" checked> <span>Also update links to it on other pages and in the menu</span></label>' +
+      '<p class="ed-muted">The old address will forward to the new one, so old links and bookmarks keep working. Any unsaved changes in the editor are saved too.</p>' +
+      '<p class="ed-error" hidden></p>',
+      [{ label: 'Cancel', onclick: function (mm) { mm.remove(); } },
+       { label: 'Rename page', primary: true, onclick: function (mm, btn) {
+          var nt = mm.querySelector('.ed-rtitle').value.trim(), ns = slugify(nt), err = mm.querySelector('.ed-error');
+          function fail(msg) { err.innerHTML = msg; err.hidden = false; busy(btn, false, 'Rename page'); }
+          if (!ns) return fail('Give the page a title.');
+          if (ns === page) return fail('That’s already the page’s name.');
+          if (ns === 'Home' || ns === 'index' || ns === 'search' || ns.charAt(0) === '_') return fail('That name is reserved. Pick another.');
+          busy(btn, true, 'Renaming…');
+          var text = finalMarkdown();
+          var fixLinks = mm.querySelector('.ed-rlinks').checked;
+          renamePage(page, ns, title, ns.replace(/-/g, ' '), text, fixLinks, function (msg) { btn.textContent = msg; })
+            .then(function (res) {
+              mm.remove(); closeEditor(true);
+              toast('Renamed to <b>' + esc(ns.replace(/-/g, ' ')) + '</b>' + (res.changed ? ' and updated ' + res.changed + ' other page' + (res.changed > 1 ? 's' : '') : '') + '.', 'ok');
+              setTimeout(function () { published(res.sha, ns); }, 1500);
+            })
+            .catch(function (e) {
+              if (e.code === 'exists') return fail('A page called <b>' + esc(ns) + '</b> already exists.');
+              if (e.status === 422 || e.status === 409) return fail('Someone saved a change at the same moment. Click <b>Rename page</b> again.');
+              fail('Could not rename: ' + esc(e.message));
+            });
+        } }]);
+    var t = m.querySelector('.ed-rtitle'), s = m.querySelector('.ed-rslug');
+    function show() { var x = slugify(t.value); s.textContent = x ? 'New page address: ' + x : ''; m.querySelector('.ed-error').hidden = true; }
+    t.oninput = show; show(); t.select();
+  }
+  function renamePage(from, to, fromTitle, toTitle, text, fixLinks, progress) {
+    var R = '/repos/' + W.owner + '/' + W.repo + '/git/', dir = W.dir + '/';
+    var headSha, baseTree, files = {};
+    progress('Checking…');
+    return gh(R + 'ref/heads/' + W.branch).then(function (ref) {
+      headSha = ref.object.sha;
+      return gh(R + 'commits/' + headSha);
+    }).then(function (c) {
+      baseTree = c.tree.sha;
+      return gh(R + 'trees/' + baseTree + '?recursive=1');
+    }).then(function (tree) {
+      (tree.tree || []).forEach(function (e) {
+        if (e.type === 'blob' && e.path.indexOf(dir) === 0 && /\.md$/.test(e.path) && e.path.slice(dir.length).indexOf('/') < 0)
+          files[e.path.slice(dir.length, -3)] = e.sha;
+      });
+      if (files[to]) { var x = new Error('exists'); x.code = 'exists'; throw x; }
+      // read every page (a few at a time) so links can be updated
+      var names = Object.keys(files).filter(function (n) { return n !== from && (fixLinks || n === '_Redirects'); });
+      var texts = {}, i = 0, done = 0;
+      function next() {
+        if (i >= names.length) return Promise.resolve();
+        var n = names[i++];
+        return gh(R + 'blobs/' + files[n]).then(function (b) {
+          texts[n] = b64decode(b.content || ''); done++;
+          progress('Updating links… ' + done + '/' + names.length);
+          return next();
+        });
+      }
+      return Promise.all([next(), next(), next(), next(), next(), next()]).then(function () { return texts; });
+    }).then(function (texts) {
+      var entries = [], changed = 0;
+      entries.push({ path: dir + to + '.md', mode: '100644', type: 'blob', content: fixLinks ? retarget(text, from, to, fromTitle, toTitle) : text });
+      entries.push({ path: dir + from + '.md', mode: '100644', type: 'blob', sha: null });
+      Object.keys(texts).forEach(function (n) {
+        if (n === '_Redirects') return;
+        var upd = retarget(texts[n], from, to, fromTitle, toTitle);
+        if (upd !== texts[n]) { entries.push({ path: dir + n + '.md', mode: '100644', type: 'blob', content: upd }); if (n.charAt(0) !== '_') changed++; }
+      });
+      // forwarding list: old -> new (and anything that pointed at the old name now points at the new one)
+      var reds = parseRedirects(texts._Redirects).filter(function (r) { return r[0] !== to && r[0] !== from; })
+        .map(function (r) { return [r[0], r[1] === from ? to : r[1]]; });
+      reds.push([from, to]);
+      entries.push({ path: dir + '_Redirects.md', mode: '100644', type: 'blob',
+        content: '# Old page names that forward to new ones (added automatically when a page is renamed)\n\n' +
+                 reds.map(function (r) { return r[0] + ' -> ' + r[1]; }).join('\n') + '\n' });
+      progress('Saving…');
+      return gh(R + 'trees', { method: 'POST', body: { base_tree: baseTree, tree: entries } }).then(function (t) {
+        return gh(R + 'commits', { method: 'POST', body: {
+          message: 'Rename ' + fromTitle + ' to ' + toTitle + (changed ? ' and update links on ' + changed + ' page' + (changed > 1 ? 's' : '') : '') + ' (by ' + user + ' via site editor)',
+          tree: t.sha, parents: [headSha] } });
+      }).then(function (c) {
+        return gh(R + 'refs/heads/' + W.branch, { method: 'PATCH', body: { sha: c.sha, force: false } })
+          .then(function () { return { sha: c.sha, changed: changed }; });
       });
     });
   }

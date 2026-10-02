@@ -505,6 +505,20 @@ def main():
         nodes.append({"id": p, "t": title_of(p), "g": path[0], "s": " › ".join(path[:2]), "d": deg[p]})
     json.dump({"groups": order, "nodes": nodes, "links": edges},
               open(os.path.join(a.out, "graph.json"), "w", encoding="utf-8"))
+    # Renamed pages: old addresses forward to the new ones (content/_Redirects.md, "Old-Name -> New-Name")
+    rp = os.path.join(a.wiki, "_Redirects.md")
+    if os.path.exists(rp):
+        for line in open(rp, encoding="utf-8"):
+            m = re.match(r"^\s*([\w\-]+)\s*->\s*([\w\-]+)\s*$", line)
+            if not m or m.group(1) in page_set or m.group(1) in ("index", "search"):
+                continue
+            old, new = m.group(1), m.group(2)
+            target = new + ".html"
+            open(os.path.join(a.out, old + ".html"), "w", encoding="utf-8").write(
+                f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>{html.escape(title_of(new))}</title>'
+                f'<meta http-equiv="refresh" content="0; url={target}"><link rel="canonical" href="{target}">'
+                f'<script>location.replace("{target}" + location.hash)</script></head>'
+                f'<body><p>This page has moved to <a href="{target}">{html.escape(title_of(new))}</a>.</p></body></html>')
     open(os.path.join(a.out, ".nojekyll"), "w").close()
     print(f"Built {len(pages)} pages into {a.out}")
 
