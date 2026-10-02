@@ -53,10 +53,10 @@
 **[Characters](Characters)**
 
 * Humans
-    * [Nova](Nova)
     * [The Ribbon](The-Ribbon)
     * Series 3 clones
         * [Adam](Adam)
+        * [Nova](Nova)
         * [Rose](Rose)
         * [Neil](Neil)
         * [Samantha](Samantha)
