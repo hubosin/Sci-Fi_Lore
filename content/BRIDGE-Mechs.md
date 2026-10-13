@@ -7,7 +7,7 @@ The mechs and prototypes built by the Link Program and BRIDGE, leading to humani
 Each machine is named by program, generation and model:
 
 | Code | Meaning | Example |
-|---|---|---|
+| ---- | ------- | ------- |
 | **LPG# M#** | Link Program, Generation #, Model # | LPG1 M01 |
 | **BG# M#** | BRIDGE, Generation #, Model # | BG3 M00 |
 | **G#M#** | Short form with the program dropped | G2M01 |
@@ -93,7 +93,7 @@ Generation 3 was planned first, but its prototype started out so close to G2M01 
 The first direct-link mech after G2M01, built to test that same link system. Unlike most BRIDGE mechs it carries **no weapons or advanced armour plating**.
 
 * **Pilot:** [Nova](Nova) (S37)
-* **Nickname:** "Zero"
+* **Nickname:** "Moop"
 * **Notable action:** fought the repaired G2M01 during [BRIDGE-Fault](BRIDGE-Fault)
 
 ### BG3 M01
